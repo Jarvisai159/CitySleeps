@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PlayMafia — The Party Game",
+  title: "CitySleeps — The Party Game",
   description:
-    "A cinematic Mafia party game. One device moderates, everyone plays.",
+    "A competitive social deduction game. One device moderates, everyone plays on their phones.",
 };
 
 export const viewport: Viewport = {

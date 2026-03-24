@@ -30,20 +30,20 @@ function PlayerPageInner() {
   const [actionPrompt, setActionPrompt] = useState<PrivateMessage | null>(null);
   const [actionSubmitted, setActionSubmitted] = useState(false);
   const [detectiveResult, setDetectiveResult] = useState<{ playerName: string; isMafia: boolean } | null>(null);
-  const [spyResult, setSpyResult] = useState<{ playerName: string; wasTargeted: boolean } | null>(null);
+  const [spyIntel, setSpyIntel] = useState<{ mafiaTargetName: string } | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelsRef = useRef<any[]>([]);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("playmafia-player-id");
+    const stored = sessionStorage.getItem("citysleeps-player-id");
     if (stored) {
       setPlayerId(stored);
     } else {
       const id = generatePlayerId();
       setPlayerId(id);
-      sessionStorage.setItem("playmafia-player-id", id);
+      sessionStorage.setItem("citysleeps-player-id", id);
     }
   }, []);
 
@@ -71,6 +71,7 @@ function PlayerPageInner() {
       setActionSubmitted(false);
       setActionPrompt(null);
       setDetectiveResult(null);
+      setSpyIntel(null);
     }
     if (phase === "DAY_VOTING") setHasVoted(false);
   }, [gameState?.phase]);
@@ -114,8 +115,8 @@ function PlayerPageInner() {
           setActionSubmitted(false);
         } else if (msg.type === "detective-result" && msg.investigationResult) {
           setDetectiveResult(msg.investigationResult);
-        } else if (msg.type === "spy-result" && msg.spyResult) {
-          setSpyResult(msg.spyResult);
+        } else if (msg.type === "spy-intel" && msg.spyIntel) {
+          setSpyIntel(msg.spyIntel);
         } else if (msg.type === "action-confirmed") {
           setActionSubmitted(true);
         }
@@ -159,7 +160,7 @@ function PlayerPageInner() {
           <motion.div key="join" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full max-w-sm">
             <div className="w-12 h-px bg-accent-red mx-auto mb-8" />
             <h1 className="text-2xl font-black text-center uppercase tracking-wider mb-10">
-              <span className="text-accent-red">Join</span> Game
+              <span className="text-accent-red">City</span>Sleeps
             </h1>
 
             <div className="space-y-5 mb-8">
@@ -197,7 +198,7 @@ function PlayerPageInner() {
               disabled={!roomCode || !playerName.trim()}
               className="w-full py-4 bg-accent-red hover:bg-accent-crimson disabled:bg-bg-elevated disabled:text-muted text-white text-sm font-bold uppercase tracking-widest rounded-lg transition-colors"
             >
-              Join
+              Join Game
             </button>
           </motion.div>
         )}
@@ -275,6 +276,23 @@ function PlayerPageInner() {
                       <div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-6" />
                       <p className="text-muted-light text-sm">Action submitted. Waiting for others...</p>
                     </div>
+                  ) : myRole === "SPY" && gameState.phase === "NIGHT_MAFIA" ? (
+                    <div>
+                      <div
+                        className="w-10 h-10 rounded-lg mx-auto mb-4 flex items-center justify-center text-lg font-black"
+                        style={{ backgroundColor: `${ROLE_INFO.SPY.color}20`, color: ROLE_INFO.SPY.color }}
+                      >
+                        S
+                      </div>
+                      <p className="text-purple-400 text-sm font-bold uppercase tracking-widest mb-2">You are watching</p>
+                      <p className="text-muted text-xs">The Mafia is choosing their target...</p>
+                      {spyIntel && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 p-4 bg-purple-950/20 border border-purple-500/20 rounded-lg">
+                          <p className="text-purple-400 text-xs font-bold uppercase tracking-wider mb-1">Intel Received</p>
+                          <p className="text-white text-sm">Mafia targeted <strong>{spyIntel.mafiaTargetName}</strong></p>
+                        </motion.div>
+                      )}
+                    </div>
                   ) : (
                     <div>
                       <motion.div animate={{ opacity: [0.2, 0.6, 0.2] }} transition={{ duration: 4, repeat: Infinity }} className="w-3 h-3 rounded-full bg-blue-400 mx-auto mb-6" />
@@ -292,8 +310,8 @@ function PlayerPageInner() {
                   <h3 className="text-xl font-black uppercase tracking-wider mb-4">Dawn</h3>
                   {gameState.nightResult?.killed ? (
                     <p className="text-accent-red font-bold">{gameState.nightResult.killedPlayerName} was killed.</p>
-                  ) : gameState.nightResult?.savedByDoctor ? (
-                    <p className="text-green-500 font-bold">No one died — the Doctor saved someone.</p>
+                  ) : gameState.nightResult?.savedByHealer ? (
+                    <p className="text-green-500 font-bold">No one died — the Healer saved someone.</p>
                   ) : (
                     <p className="text-muted-light">A peaceful night.</p>
                   )}
@@ -324,11 +342,10 @@ function PlayerPageInner() {
                           </p>
                         </div>
                       )}
-                      {spyResult && (
+                      {spyIntel && (
                         <div className="mt-3 p-3 bg-purple-950/20 border border-purple-500/20 rounded-lg">
                           <p className="text-purple-400 text-xs">
-                            Surveillance: <strong>{spyResult.playerName}</strong>{" "}
-                            <strong>{spyResult.wasTargeted ? "WAS targeted by Mafia" : "was NOT targeted"}</strong>
+                            Intel: Mafia targeted <strong>{spyIntel.mafiaTargetName}</strong> last night
                           </p>
                         </div>
                       )}
@@ -400,7 +417,7 @@ function PlayerPageInner() {
                   <div className="w-16 h-px bg-accent-red mx-auto mb-6" />
                   <p className="text-muted text-xs uppercase tracking-[0.3em] mb-2">Game Over</p>
                   <h2 className="text-2xl font-black uppercase tracking-wider mb-2">
-                    {gameState.winner === "VILLAGE" ? "Village Wins" : <span className="text-accent-red">Mafia Wins</span>}
+                    {gameState.winner === "VILLAGE" ? "Civilians Win" : <span className="text-accent-red">Mafia Wins</span>}
                   </h2>
                   {myRole && (
                     <p className="text-muted-light text-sm mb-8">
@@ -443,12 +460,10 @@ function NightActionUI({
   detectiveResult: { playerName: string; isMafia: boolean } | null;
   onSelect: (targetId: string) => void;
 }) {
-  const labels = {
+  const labels: Record<string, { title: string; symbol: string; color: string }> = {
     "mafia-kill": { title: "Choose Target", symbol: "M", color: "#C41E3A" },
-    "doctor-save": { title: "Choose Who to Save", symbol: "D", color: "#2D8B46" },
+    "healer-save": { title: "Choose Who to Save", symbol: "H", color: "#2D8B46" },
     "detective-investigate": { title: "Investigate", symbol: "?", color: "#2563EB" },
-    "spy-surveil": { title: "Surveil a Player", symbol: "S", color: "#7C3AED" },
-    "terrorist-choose": { title: "Choose Target", symbol: "T", color: "#E85D04" },
   };
   const info = labels[prompt.actionType!] ?? labels["mafia-kill"];
 

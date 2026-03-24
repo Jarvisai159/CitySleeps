@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { GameEngine } from "@/engine/GameEngine";
-import { GameState, PrivateMessage, PublicPlayer, ROLE_INFO } from "@/engine/types";
+import { GameState, PublicPlayer, ROLE_INFO } from "@/engine/types";
+import { saveGameResult } from "@/lib/saveGame";
 import {
   getSupabase,
   getPublicChannel,
@@ -128,19 +129,16 @@ export default function HostPage() {
         setTimeout(() => {
           speak(
             gameState.round === 1
-              ? "Night falls over the town. Everyone, close your eyes. Mafia and Terrorist, open your eyes and choose your target."
-              : "Night falls. Everyone, close your eyes. Mafia, open your eyes. Choose your target."
+              ? "Night falls over the town. Everyone, close your eyes. Mafia, open your eyes. Spy, open your eyes. You may see each other, but only Mafia may choose a target."
+              : "Night falls. Everyone, close your eyes. Mafia and Spy, open your eyes. Mafia, choose your target."
           );
         }, 800);
         break;
-      case "NIGHT_DOCTOR":
-        speak("Mafia, close your eyes. Doctor, open your eyes. Choose someone to protect.");
+      case "NIGHT_HEALER":
+        speak("Mafia and Spy, close your eyes. Healer, open your eyes. Choose someone to protect.");
         break;
       case "NIGHT_DETECTIVE":
-        speak("Doctor, close your eyes. Detective, open your eyes. Choose someone to investigate.");
-        break;
-      case "NIGHT_SPY":
-        speak("Detective, close your eyes. Spy, open your eyes. Choose someone to surveil.");
+        speak("Healer, close your eyes. Detective, open your eyes. Choose someone to investigate.");
         break;
       case "DAWN":
         playDawnChime();
@@ -150,9 +148,9 @@ export default function HostPage() {
             speak(
               `${closeEyes} Everyone, open your eyes. The sun rises. Last night, ${gameState.nightResult.killedPlayerName} was killed by the Mafia.`
             );
-          } else if (gameState.nightResult?.savedByDoctor) {
+          } else if (gameState.nightResult?.savedByHealer) {
             speak(
-              `${closeEyes} Everyone, open your eyes. The sun rises. No one died last night. The Doctor made a crucial save.`
+              `${closeEyes} Everyone, open your eyes. The sun rises. No one died last night. The Healer made a crucial save.`
             );
           } else {
             speak(
@@ -188,10 +186,14 @@ export default function HostPage() {
         setTimeout(() => {
           speak(
             gameState.winner === "VILLAGE"
-              ? "Game over. The Village wins! All Mafia members have been eliminated."
-              : "Game over. The Mafia wins! They have taken over the town."
+              ? "Game over. The Civilians win! All Mafia members have been eliminated."
+              : "Game over. The Mafia wins! They have taken over the city."
           );
         }, 800);
+        // Save game result to database
+        if (engineRef.current && roomCode) {
+          saveGameResult(engineRef.current, roomCode).catch(console.error);
+        }
         break;
     }
   }, [gameState?.phase]);
@@ -308,6 +310,23 @@ export default function HostPage() {
   const joinUrl = typeof window !== "undefined" ? `${window.location.origin}/play?code=${roomCode}` : "";
   const aliveCount = gameState.players.filter((p) => p.isAlive).length;
 
+  const shareText = `Join my CitySleeps game! Enter code ${roomCode} or click: ${joinUrl}`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(joinUrl).catch(() => {});
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "CitySleeps", text: shareText, url: joinUrl });
+      } catch { /* cancelled */ }
+    } else {
+      window.open(whatsappUrl, "_blank");
+    }
+  };
+
   return (
     <main className="min-h-dvh flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden">
       {/* Background atmospherics */}
@@ -325,8 +344,35 @@ export default function HostPage() {
         {/* ─── LOBBY ───────────────────────────────── */}
         {gameState.phase === "LOBBY" && (
           <motion.div key="lobby" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10 w-full max-w-2xl text-center">
+            <h2 className="text-3xl font-black uppercase tracking-wider mb-1">
+              <span className="text-accent-red">City</span>Sleeps
+            </h2>
             <p className="text-muted text-xs uppercase tracking-[0.3em] mb-2">Room Code</p>
-            <h2 className="text-5xl font-black tracking-[0.15em] text-white mb-8">{roomCode}</h2>
+            <h2 className="text-5xl font-black tracking-[0.15em] text-white mb-4">{roomCode}</h2>
+
+            <div className="flex gap-2 justify-center mb-8">
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2 px-4 bg-[#25D366] hover:bg-[#20BD5A] text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                WhatsApp
+              </a>
+              <button
+                onClick={handleCopyLink}
+                className="py-2 px-4 bg-bg-elevated hover:bg-bg-hover text-white/80 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors border border-white/10"
+              >
+                Copy Link
+              </button>
+              <button
+                onClick={handleShare}
+                className="py-2 px-4 bg-bg-elevated hover:bg-bg-hover text-white/80 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors border border-white/10"
+              >
+                Share
+              </button>
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-8 items-center justify-center mb-10">
               <div className="bg-white p-3 rounded-lg">
@@ -386,7 +432,7 @@ export default function HostPage() {
         )}
 
         {/* ─── NIGHT ───────────────────────────────── */}
-        {(gameState.phase === "NIGHT_MAFIA" || gameState.phase === "NIGHT_DOCTOR" || gameState.phase === "NIGHT_DETECTIVE" || gameState.phase === "NIGHT_SPY") && (
+        {(gameState.phase === "NIGHT_MAFIA" || gameState.phase === "NIGHT_HEALER" || gameState.phase === "NIGHT_DETECTIVE") && (
           <motion.div key="night" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10 text-center">
             <motion.div
               animate={{ opacity: [0.4, 1, 0.4] }}
@@ -401,10 +447,9 @@ export default function HostPage() {
               animate={{ opacity: 1 }}
               className="text-muted-light text-sm mb-10"
             >
-              {gameState.phase === "NIGHT_MAFIA" && "The Mafia is choosing a target..."}
-              {gameState.phase === "NIGHT_DOCTOR" && "The Doctor is choosing who to save..."}
+              {gameState.phase === "NIGHT_MAFIA" && "The Mafia is choosing a target... The Spy is watching."}
+              {gameState.phase === "NIGHT_HEALER" && "The Healer is choosing who to save..."}
               {gameState.phase === "NIGHT_DETECTIVE" && "The Detective is investigating..."}
-              {gameState.phase === "NIGHT_SPY" && "The Spy is surveilling..."}
             </motion.p>
             <button onClick={handleForceResolve} className="py-2.5 px-8 bg-bg-elevated hover:bg-bg-hover text-muted-light text-xs uppercase tracking-widest rounded-lg transition-colors border border-white/5">
               Force Advance
@@ -426,10 +471,10 @@ export default function HostPage() {
                   </p>
                   <p className="text-muted-light text-sm">was killed by the Mafia</p>
                 </div>
-              ) : gameState.nightResult?.savedByDoctor ? (
+              ) : gameState.nightResult?.savedByHealer ? (
                 <div className="bg-bg-card border border-green-700/30 rounded-lg p-6 max-w-sm mx-auto mb-8">
                   <p className="text-green-500 text-xl font-bold uppercase tracking-wide mb-1">No One Died</p>
-                  <p className="text-muted-light text-sm">The Doctor made a save</p>
+                  <p className="text-muted-light text-sm">The Healer made a save</p>
                 </div>
               ) : (
                 <div className="bg-bg-card border border-white/10 rounded-lg p-6 max-w-sm mx-auto mb-8">
@@ -561,7 +606,7 @@ export default function HostPage() {
               <p className="text-muted text-xs uppercase tracking-[0.3em] mb-3">Game Over</p>
               <h2 className="text-4xl font-black uppercase tracking-wider mb-2">
                 {gameState.winner === "VILLAGE" ? (
-                  <span className="text-white">Village Wins</span>
+                  <span className="text-white">Civilians Win</span>
                 ) : (
                   <span className="text-accent-red">Mafia Wins</span>
                 )}
@@ -569,7 +614,7 @@ export default function HostPage() {
               <p className="text-muted-light text-sm mb-10">
                 {gameState.winner === "VILLAGE"
                   ? "All Mafia members have been found and eliminated."
-                  : "The Mafia has taken over the town."}
+                  : "The Mafia has taken over the city."}
               </p>
             </motion.div>
 

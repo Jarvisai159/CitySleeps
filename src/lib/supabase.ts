@@ -18,13 +18,13 @@ export function getSupabase(): SupabaseClient {
 }
 
 export function getPublicChannel(roomCode: string) {
-  return `mafia-${roomCode}`;
+  return `cs-${roomCode}`;
 }
 
 export function getHostChannel(roomCode: string) {
-  return `mafia-${roomCode}-host`;
+  return `cs-${roomCode}-host`;
 }
 
 export function getPlayerChannel(roomCode: string, playerId: string) {
-  return `mafia-${roomCode}-${playerId}`;
+  return `cs-${roomCode}-${playerId}`;
 }

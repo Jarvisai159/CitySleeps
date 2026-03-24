@@ -14,20 +14,19 @@ import {
 const DEFAULT_SETTINGS: GameSettings = {
   discussionTime: 120,
   votingTime: 60,
-  doctorSelfHeal: true,
+  healerSelfHeal: true,
 };
 
 function getRoleDistribution(count: number): Record<Role, number> {
-  // Terrorist is Mafia-aligned, Spy is Village-aligned
   if (count <= 5)
-    return { MAFIA: 1, TERRORIST: 0, DOCTOR: 1, DETECTIVE: 1, SPY: 0, VILLAGER: count - 3 };
+    return { MAFIA: 1, TERRORIST: 0, HEALER: 1, DETECTIVE: 1, SPY: 0, CIVILIAN: count - 3 };
   if (count <= 7)
-    return { MAFIA: 1, TERRORIST: 1, DOCTOR: 1, DETECTIVE: 1, SPY: 0, VILLAGER: count - 4 };
+    return { MAFIA: 1, TERRORIST: 1, HEALER: 1, DETECTIVE: 1, SPY: 0, CIVILIAN: count - 4 };
   if (count <= 9)
-    return { MAFIA: 2, TERRORIST: 1, DOCTOR: 1, DETECTIVE: 1, SPY: 1, VILLAGER: count - 6 };
+    return { MAFIA: 2, TERRORIST: 1, HEALER: 1, DETECTIVE: 1, SPY: 1, CIVILIAN: count - 6 };
   if (count <= 12)
-    return { MAFIA: 2, TERRORIST: 1, DOCTOR: 1, DETECTIVE: 1, SPY: 1, VILLAGER: count - 6 };
-  return { MAFIA: 3, TERRORIST: 1, DOCTOR: 1, DETECTIVE: 1, SPY: 1, VILLAGER: count - 7 };
+    return { MAFIA: 2, TERRORIST: 1, HEALER: 1, DETECTIVE: 1, SPY: 1, CIVILIAN: count - 6 };
+  return { MAFIA: 3, TERRORIST: 1, HEALER: 1, DETECTIVE: 1, SPY: 1, CIVILIAN: count - 7 };
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -39,8 +38,14 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+/** Mafia win-condition team (Mafia + Terrorist) */
 function isMafiaTeam(role: Role): boolean {
   return role === "MAFIA" || role === "TERRORIST";
+}
+
+/** What the Detective sees — Spy appears as Mafia */
+function appearsAsMafia(role: Role): boolean {
+  return role === "MAFIA" || role === "TERRORIST" || role === "SPY";
 }
 
 export class GameEngine {
@@ -50,16 +55,15 @@ export class GameEngine {
   nightActions: NightActions = {
     mafiaVotes: {},
     mafiaTarget: null,
-    doctorSave: null,
+    healerSave: null,
     detectiveTarget: null,
-    spyTarget: null,
   };
   votes: Record<string, string> = {};
   settings: GameSettings;
   nightResult: NightResult | null = null;
   voteResult: VoteResult | null = null;
   winner: "MAFIA" | "VILLAGE" | null = null;
-  lastDoctorSave: string | null = null;
+  lastHealerSave: string | null = null;
 
   private onStateChange: (state: GameState) => void;
   private onPrivateMessage: (playerId: string, msg: PrivateMessage) => void;
@@ -86,7 +90,7 @@ export class GameEngine {
       if (p.name.toLowerCase() === name.toLowerCase())
         throw new Error("Name already taken");
     }
-    const player: Player = { id, name, role: null, isAlive: true, isConnected: true };
+    const player: Player = { id, name, role: null, isAlive: true, isConnected: true, deathRound: null };
     this.players.set(id, player);
     this.broadcastState();
     return player;
@@ -144,18 +148,29 @@ export class GameEngine {
     this.phase = "ROLE_REVEAL";
     this.round = 1;
 
+    // Build Mafia member names list (Mafia + Terrorist — NOT Spy)
+    const mafiaNames = Array.from(this.players.values())
+      .filter((p) => isMafiaTeam(p.role!))
+      .map((p) => `${p.name} (${p.role})`);
+
     for (const [id, player] of this.players) {
-      // Mafia team members know each other (Mafia + Terrorist)
-      const mafiaTeam = isMafiaTeam(player.role!)
-        ? Array.from(this.players.values())
-            .filter((p) => isMafiaTeam(p.role!) && p.id !== id)
-            .map((p) => `${p.name} (${p.role})`)
-        : undefined;
+      let teamInfo: string[] | undefined;
+
+      if (player.role === "MAFIA") {
+        // Mafia sees other Mafia + Terrorist (but NOT Spy)
+        teamInfo = mafiaNames.filter((n) => !n.startsWith(player.name + " "));
+      } else if (player.role === "TERRORIST") {
+        // Terrorist knows Mafia members
+        teamInfo = mafiaNames.filter((n) => !n.startsWith(player.name + " "));
+      } else if (player.role === "SPY") {
+        // Spy knows ALL Mafia team members (they observe them at night)
+        teamInfo = mafiaNames;
+      }
 
       this.onPrivateMessage(id, {
         type: "role-assigned",
         role: player.role!,
-        mafiaTeam,
+        mafiaTeam: teamInfo,
       });
     }
 
@@ -181,9 +196,8 @@ export class GameEngine {
     this.nightActions = {
       mafiaVotes: {},
       mafiaTarget: null,
-      doctorSave: null,
+      healerSave: null,
       detectiveTarget: null,
-      spyTarget: null,
     };
     this.nightResult = null;
     this.voteResult = null;
@@ -194,10 +208,11 @@ export class GameEngine {
 
   private sendMafiaPrompts(): void {
     const alive = this.getAlivePlayers();
-    // Mafia + Terrorist both participate in the kill vote
-    const mafiaTeamAlive = alive.filter((p) => isMafiaTeam(p.role!));
+    // Only MAFIA votes at night (not Terrorist, not Spy)
+    const mafiaVoters = alive.filter((p) => p.role === "MAFIA");
     const targets = alive.filter((p) => !isMafiaTeam(p.role!));
-    for (const p of mafiaTeamAlive) {
+
+    for (const p of mafiaVoters) {
       this.onPrivateMessage(p.id, {
         type: "action-prompt",
         actionType: "mafia-kill",
@@ -206,22 +221,27 @@ export class GameEngine {
         })),
       });
     }
+
+    // Spy wakes up too — but just watches. They see a "watching" state.
+    // Spy intel (who Mafia targeted) is sent AFTER Mafia finishes voting.
   }
 
   submitNightAction(playerId: string, targetId: string): void {
     const player = this.players.get(playerId);
     if (!player || !player.isAlive) return;
 
-    if (this.phase === "NIGHT_MAFIA" && isMafiaTeam(player.role!)) {
+    if (this.phase === "NIGHT_MAFIA" && player.role === "MAFIA") {
       this.nightActions.mafiaVotes[playerId] = targetId;
       this.onPrivateMessage(playerId, { type: "action-confirmed" });
-      const aliveMafia = this.getAlivePlayers().filter((p) => isMafiaTeam(p.role!));
+      // Check if all MAFIA (not Terrorist) have voted
+      const aliveMafia = this.getAlivePlayers().filter((p) => p.role === "MAFIA");
       if (Object.keys(this.nightActions.mafiaVotes).length >= aliveMafia.length) {
         this.resolveMafiaVote();
+        this.sendSpyIntel();
         this.advanceNight();
       }
-    } else if (this.phase === "NIGHT_DOCTOR" && player.role === "DOCTOR") {
-      this.nightActions.doctorSave = targetId;
+    } else if (this.phase === "NIGHT_HEALER" && player.role === "HEALER") {
+      this.nightActions.healerSave = targetId;
       this.onPrivateMessage(playerId, { type: "action-confirmed" });
       this.advanceNight();
     } else if (this.phase === "NIGHT_DETECTIVE" && player.role === "DETECTIVE") {
@@ -232,20 +252,9 @@ export class GameEngine {
           type: "detective-result",
           investigationResult: {
             playerName: target.name,
-            isMafia: isMafiaTeam(target.role!),
+            // Spy appears as Mafia to Detective!
+            isMafia: appearsAsMafia(target.role!),
           },
-        });
-      }
-      this.advanceNight();
-    } else if (this.phase === "NIGHT_SPY" && player.role === "SPY") {
-      this.nightActions.spyTarget = targetId;
-      // Spy learns if the Mafia targeted this player
-      const wasTargeted = this.nightActions.mafiaTarget === targetId;
-      const target = this.players.get(targetId);
-      if (target) {
-        this.onPrivateMessage(playerId, {
-          type: "spy-result",
-          spyResult: { playerName: target.name, wasTargeted },
         });
       }
       this.advanceNight();
@@ -254,6 +263,7 @@ export class GameEngine {
 
   private resolveMafiaVote(): void {
     const votes = Object.values(this.nightActions.mafiaVotes);
+    if (votes.length === 0) return;
     const tally: Record<string, number> = {};
     for (const v of votes) tally[v] = (tally[v] || 0) + 1;
     const maxVotes = Math.max(...Object.values(tally));
@@ -261,21 +271,35 @@ export class GameEngine {
     this.nightActions.mafiaTarget = top[Math.floor(Math.random() * top.length)];
   }
 
+  /** After Mafia votes, send the Spy intel about who was targeted */
+  private sendSpyIntel(): void {
+    const spy = this.getAlivePlayers().find((p) => p.role === "SPY");
+    if (!spy || !this.nightActions.mafiaTarget) return;
+
+    const targetPlayer = this.players.get(this.nightActions.mafiaTarget);
+    if (targetPlayer) {
+      this.onPrivateMessage(spy.id, {
+        type: "spy-intel",
+        spyIntel: { mafiaTargetName: targetPlayer.name },
+      });
+    }
+  }
+
   private advanceNight(): void {
     const alive = this.getAlivePlayers();
 
     if (this.phase === "NIGHT_MAFIA") {
-      const doctor = alive.find((p) => p.role === "DOCTOR");
-      if (doctor) {
-        this.phase = "NIGHT_DOCTOR";
+      const healer = alive.find((p) => p.role === "HEALER");
+      if (healer) {
+        this.phase = "NIGHT_HEALER";
         const targets = alive.filter((p) => {
-          if (!this.settings.doctorSelfHeal && p.id === doctor.id) return false;
-          if (this.lastDoctorSave === p.id) return false;
+          if (!this.settings.healerSelfHeal && p.id === healer.id) return false;
+          if (this.lastHealerSave === p.id) return false;
           return true;
         });
-        this.onPrivateMessage(doctor.id, {
+        this.onPrivateMessage(healer.id, {
           type: "action-prompt",
-          actionType: "doctor-save",
+          actionType: "healer-save",
           targets: targets.map((t) => ({ id: t.id, name: t.name, isAlive: t.isAlive, isConnected: t.isConnected })),
         });
         this.broadcastState();
@@ -283,8 +307,8 @@ export class GameEngine {
       }
     }
 
-    if (this.phase === "NIGHT_MAFIA" || this.phase === "NIGHT_DOCTOR") {
-      if (this.phase === "NIGHT_DOCTOR") this.lastDoctorSave = this.nightActions.doctorSave;
+    if (this.phase === "NIGHT_MAFIA" || this.phase === "NIGHT_HEALER") {
+      if (this.phase === "NIGHT_HEALER") this.lastHealerSave = this.nightActions.healerSave;
       const detective = alive.find((p) => p.role === "DETECTIVE");
       if (detective) {
         this.phase = "NIGHT_DETECTIVE";
@@ -299,40 +323,25 @@ export class GameEngine {
       }
     }
 
-    if (this.phase === "NIGHT_MAFIA" || this.phase === "NIGHT_DOCTOR" || this.phase === "NIGHT_DETECTIVE") {
-      if (this.phase === "NIGHT_DOCTOR") this.lastDoctorSave = this.nightActions.doctorSave;
-      const spy = alive.find((p) => p.role === "SPY");
-      if (spy) {
-        this.phase = "NIGHT_SPY";
-        const targets = alive.filter((p) => p.id !== spy.id);
-        this.onPrivateMessage(spy.id, {
-          type: "action-prompt",
-          actionType: "spy-surveil",
-          targets: targets.map((t) => ({ id: t.id, name: t.name, isAlive: t.isAlive, isConnected: t.isConnected })),
-        });
-        this.broadcastState();
-        return;
-      }
-    }
-
-    // All night actions done
+    // All night actions done — resolve
     this.resolveNight();
   }
 
   private resolveNight(): void {
-    if (this.phase === "NIGHT_DOCTOR") this.lastDoctorSave = this.nightActions.doctorSave;
+    if (this.phase === "NIGHT_HEALER") this.lastHealerSave = this.nightActions.healerSave;
 
     const target = this.nightActions.mafiaTarget;
-    const saved = target !== null && target === this.nightActions.doctorSave;
+    const saved = target !== null && target === this.nightActions.healerSave;
 
     if (target && !saved) {
       const victim = this.players.get(target);
       if (victim) {
         victim.isAlive = false;
-        this.nightResult = { killed: target, savedByDoctor: false, killedPlayerName: victim.name };
+        victim.deathRound = this.round;
+        this.nightResult = { killed: target, savedByHealer: false, killedPlayerName: victim.name };
       }
     } else {
-      this.nightResult = { killed: null, savedByDoctor: saved, killedPlayerName: null };
+      this.nightResult = { killed: null, savedByHealer: saved, killedPlayerName: null };
     }
 
     this.phase = "DAWN";
@@ -402,17 +411,17 @@ export class GameEngine {
       const p = this.players.get(eliminated);
       if (p) {
         p.isAlive = false;
+        p.deathRound = this.round;
         eliminatedRole = p.role;
         eliminatedName = p.name;
 
-        // Terrorist revenge: if a Terrorist is voted out, they take a random village player
+        // Terrorist revenge
         if (p.role === "TERRORIST") {
-          const aliveVillagers = this.getAlivePlayers().filter(
-            (v) => !isMafiaTeam(v.role!)
-          );
-          if (aliveVillagers.length > 0) {
-            const victim = aliveVillagers[Math.floor(Math.random() * aliveVillagers.length)];
+          const aliveCitizens = this.getAlivePlayers().filter((v) => !isMafiaTeam(v.role!));
+          if (aliveCitizens.length > 0) {
+            const victim = aliveCitizens[Math.floor(Math.random() * aliveCitizens.length)];
             victim.isAlive = false;
+            victim.deathRound = this.round;
             terroristVictim = victim.id;
             terroristVictimName = victim.name;
           }
@@ -421,14 +430,8 @@ export class GameEngine {
     }
 
     this.voteResult = {
-      votes: { ...this.votes },
-      tally,
-      eliminated,
-      eliminatedName,
-      eliminatedRole,
-      isTie,
-      terroristVictim,
-      terroristVictimName,
+      votes: { ...this.votes }, tally, eliminated, eliminatedName,
+      eliminatedRole, isTie, terroristVictim, terroristVictimName,
     };
 
     this.phase = "ELIMINATION";
@@ -458,12 +461,11 @@ export class GameEngine {
         if (rand) this.nightActions.mafiaVotes["auto"] = rand.id;
       }
       this.resolveMafiaVote();
+      this.sendSpyIntel();
       this.advanceNight();
-    } else if (this.phase === "NIGHT_DOCTOR") {
+    } else if (this.phase === "NIGHT_HEALER") {
       this.advanceNight();
     } else if (this.phase === "NIGHT_DETECTIVE") {
-      this.advanceNight();
-    } else if (this.phase === "NIGHT_SPY") {
       this.advanceNight();
     } else if (this.phase === "DAY_VOTING") {
       for (const p of this.getAlivePlayers()) {
@@ -486,6 +488,37 @@ export class GameEngine {
     if (mafiaCount === 0) return "VILLAGE";
     if (mafiaCount >= villageCount) return "MAFIA";
     return null;
+  }
+
+  getGameResult(): {
+    winner: "MAFIA" | "VILLAGE";
+    totalRounds: number;
+    players: Array<{
+      userId: string;
+      name: string;
+      role: Role;
+      team: string;
+      survived: boolean;
+      survivalRound: number;
+    }>;
+  } | null {
+    if (this.phase !== "GAME_OVER" || !this.winner) return null;
+    const ROLE_TEAMS: Record<string, string> = {
+      MAFIA: "mafia", TERRORIST: "mafia",
+      HEALER: "village", DETECTIVE: "village", SPY: "village", CIVILIAN: "village",
+    };
+    return {
+      winner: this.winner,
+      totalRounds: this.round,
+      players: Array.from(this.players.values()).map((p) => ({
+        userId: p.id,
+        name: p.name,
+        role: p.role!,
+        team: ROLE_TEAMS[p.role!] ?? "village",
+        survived: p.isAlive,
+        survivalRound: p.deathRound ?? this.round,
+      })),
+    };
   }
 
   private broadcastState(): void {

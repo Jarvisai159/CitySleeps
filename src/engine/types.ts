@@ -1,17 +1,15 @@
-export type Role = "MAFIA" | "DOCTOR" | "DETECTIVE" | "SPY" | "TERRORIST" | "VILLAGER";
+export type Role = "MAFIA" | "HEALER" | "DETECTIVE" | "SPY" | "TERRORIST" | "CIVILIAN";
 
 export type GamePhase =
   | "LOBBY"
   | "ROLE_REVEAL"
   | "NIGHT_MAFIA"
-  | "NIGHT_DOCTOR"
+  | "NIGHT_HEALER"
   | "NIGHT_DETECTIVE"
-  | "NIGHT_SPY"
   | "DAWN"
   | "DAY_DISCUSSION"
   | "DAY_VOTING"
   | "ELIMINATION"
-  | "TERRORIST_REVENGE"
   | "GAME_OVER";
 
 export interface Player {
@@ -20,6 +18,7 @@ export interface Player {
   role: Role | null;
   isAlive: boolean;
   isConnected: boolean;
+  deathRound: number | null;
 }
 
 export interface PublicPlayer {
@@ -32,20 +31,19 @@ export interface PublicPlayer {
 export interface GameSettings {
   discussionTime: number;
   votingTime: number;
-  doctorSelfHeal: boolean;
+  healerSelfHeal: boolean;
 }
 
 export interface NightActions {
   mafiaVotes: Record<string, string>;
   mafiaTarget: string | null;
-  doctorSave: string | null;
+  healerSave: string | null;
   detectiveTarget: string | null;
-  spyTarget: string | null;
 }
 
 export interface NightResult {
   killed: string | null;
-  savedByDoctor: boolean;
+  savedByHealer: boolean;
   killedPlayerName: string | null;
 }
 
@@ -78,19 +76,18 @@ export interface PrivateMessage {
     | "role-assigned"
     | "action-prompt"
     | "detective-result"
-    | "spy-result"
-    | "action-confirmed"
-    | "terrorist-revenge";
+    | "spy-intel"
+    | "action-confirmed";
   role?: Role;
   mafiaTeam?: string[];
-  actionType?: "mafia-kill" | "doctor-save" | "detective-investigate" | "spy-surveil" | "terrorist-choose";
+  actionType?: "mafia-kill" | "healer-save" | "detective-investigate";
   targets?: PublicPlayer[];
   investigationResult?: { playerName: string; isMafia: boolean };
-  spyResult?: { playerName: string; wasTargeted: boolean };
+  spyIntel?: { mafiaTargetName: string };
 }
 
 export interface PlayerAction {
-  type: "join" | "night-action" | "vote" | "role-seen" | "terrorist-pick";
+  type: "join" | "night-action" | "vote" | "role-seen";
   playerId: string;
   playerName?: string;
   targetId?: string;
@@ -112,11 +109,11 @@ export const ROLE_INFO: Record<
     symbol: "T",
     color: "#E85D04",
     team: "mafia",
-    description: "Mafia-aligned. If voted out, you take one player down with you.",
+    description: "Mafia-aligned sleeper. Does not wake at night. If voted out, takes one player down.",
   },
-  DOCTOR: {
-    name: "Doctor",
-    symbol: "D",
+  HEALER: {
+    name: "Healer",
+    symbol: "H",
     color: "#2D8B46",
     team: "village",
     description: "Choose one player to protect each night.",
@@ -133,11 +130,11 @@ export const ROLE_INFO: Record<
     symbol: "S",
     color: "#7C3AED",
     team: "village",
-    description: "Each night, watch a player. Learn if the Mafia targeted them.",
+    description: "Wakes with the Mafia — sees their identities and target. But appears as Mafia to the Detective.",
   },
-  VILLAGER: {
-    name: "Villager",
-    symbol: "V",
+  CIVILIAN: {
+    name: "Civilian",
+    symbol: "C",
     color: "#9CA3AF",
     team: "village",
     description: "Find and vote out the Mafia during the day.",

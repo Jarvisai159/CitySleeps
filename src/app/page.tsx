@@ -20,11 +20,11 @@ export default function Home() {
             <div className="w-16 h-px bg-accent-red mx-auto mb-8" />
 
             <h1 className="text-5xl sm:text-6xl font-black tracking-tight uppercase mb-2">
-              <span className="text-accent-red">Play</span>
-              <span className="text-white">Mafia</span>
+              <span className="text-accent-red">City</span>
+              <span className="text-white">Sleeps</span>
             </h1>
             <p className="text-muted-light text-sm uppercase tracking-[0.25em] mb-14">
-              The Party Game
+              The Social Deduction Game
             </p>
 
             <div className="flex flex-col gap-3">
@@ -60,7 +60,7 @@ export default function Home() {
               <Section title="The Game">
                 <p>
                   Mafia is a social deduction game. Players are secretly assigned roles —
-                  most are innocent <strong>Villagers</strong>, but hidden among them are{" "}
+                  most are innocent <strong>Civilians</strong>, but hidden among them are{" "}
                   <strong>Mafia</strong> members trying to eliminate everyone.
                 </p>
                 <p>
@@ -85,14 +85,14 @@ export default function Home() {
                   <RoleCard name="Mafia" symbol="M" color="#C41E3A" team="Mafia Team"
                     desc="The killers. Each night, all Mafia members secretly choose one player to eliminate. During the day, they must blend in. Mafia members know each other." />
                   <RoleCard name="Terrorist" symbol="T" color="#E85D04" team="Mafia Team"
-                    desc="Aligned with the Mafia. Votes with them at night on the kill target. If the Terrorist is voted out during the day, they take one random villager down with them." />
-                  <RoleCard name="Doctor" symbol="D" color="#2D8B46" team="Village Team"
+                    desc="Aligned with the Mafia but does not wake at night. A sleeper agent. If the Terrorist is voted out during the day, they take one random villager down with them." />
+                  <RoleCard name="Healer" symbol="H" color="#2D8B46" team="Village Team"
                     desc="Each night, choose one player to protect. If the Mafia targets that player, they survive. Cannot save the same person two nights in a row." />
                   <RoleCard name="Detective" symbol="?" color="#2563EB" team="Village Team"
                     desc="Each night, investigate one player. Learn if they are aligned with the Mafia or not. Be careful — revealing yourself makes you a target." />
                   <RoleCard name="Spy" symbol="S" color="#7C3AED" team="Village Team"
-                    desc="Each night, surveil one player. Learn whether the Mafia targeted them for a kill that night. Use this intel to identify patterns and protect allies." />
-                  <RoleCard name="Villager" symbol="V" color="#9CA3AF" team="Village Team"
+                    desc="Wakes with the Mafia at night — sees their identities and who they target. But appears as Mafia to the Detective. Use your intel carefully without revealing yourself." />
+                  <RoleCard name="Civilian" symbol="C" color="#9CA3AF" team="Village Team"
                     desc="No special ability. Your power is your voice and your vote. Pay attention, ask questions, and figure out who the Mafia is." />
                 </div>
               </Section>
@@ -101,15 +101,14 @@ export default function Home() {
                 <div className="space-y-5">
                   <Phase num="1" title="Night Phase" lines={[
                     "The host device announces \"Night falls\" — everyone closes their eyes",
-                    "Mafia + Terrorist open their phones and pick a target to kill",
-                    "The Doctor picks someone to protect",
+                    "Mafia and Spy open their eyes — the Spy sees who the Mafia targets but cannot act",
+                    "The Healer picks someone to protect",
                     "The Detective picks someone to investigate",
-                    "The Spy picks someone to surveil",
                   ]} />
                   <Phase num="2" title="Dawn" lines={[
                     "The host announces what happened overnight",
                     "If someone was killed, they are eliminated",
-                    "If the Doctor saved the target, no one dies",
+                    "If the Healer saved the target, no one dies",
                   ]} />
                   <Phase num="3" title="Discussion" lines={[
                     "Everyone debates who they think is Mafia",
@@ -131,12 +130,12 @@ export default function Home() {
               <Section title="Win Conditions">
                 <div className="space-y-3">
                   <div className="bg-bg-primary border border-white/5 rounded-lg p-4">
-                    <p className="text-sm font-bold uppercase tracking-wider text-white mb-1">Village Wins</p>
+                    <p className="text-sm font-bold uppercase tracking-wider text-white mb-1">Civilians Win</p>
                     <p className="text-muted-light text-xs">All Mafia-aligned players (Mafia + Terrorist) are eliminated.</p>
                   </div>
                   <div className="bg-bg-primary border border-accent-red/20 rounded-lg p-4">
                     <p className="text-sm font-bold uppercase tracking-wider text-accent-red mb-1">Mafia Wins</p>
-                    <p className="text-muted-light text-xs">Mafia-aligned players equal or outnumber the remaining villagers.</p>
+                    <p className="text-muted-light text-xs">Mafia-aligned players equal or outnumber the remaining civilians.</p>
                   </div>
                 </div>
               </Section>
@@ -149,10 +148,10 @@ export default function Home() {
                         <th className="text-left p-3">Players</th>
                         <th className="text-center p-2">M</th>
                         <th className="text-center p-2">T</th>
-                        <th className="text-center p-2">D</th>
+                        <th className="text-center p-2">H</th>
                         <th className="text-center p-2">Det</th>
                         <th className="text-center p-2">Spy</th>
-                        <th className="text-center p-2">V</th>
+                        <th className="text-center p-2">C</th>
                       </tr>
                     </thead>
                     <tbody className="text-muted-light">
@@ -165,7 +164,7 @@ export default function Home() {
                   </table>
                 </div>
                 <p className="text-muted text-[10px] mt-2 uppercase tracking-wider">
-                  M = Mafia &middot; T = Terrorist &middot; D = Doctor &middot; Det = Detective &middot; V = Villager
+                  M = Mafia &middot; T = Terrorist &middot; H = Healer &middot; Det = Detective &middot; C = Civilian
                 </p>
               </Section>
 
