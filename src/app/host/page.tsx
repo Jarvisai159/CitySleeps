@@ -21,6 +21,7 @@ import {
   playEliminationSound,
   playVictorySound,
   setVoiceType,
+  unlockAudio,
   type VoiceType,
 } from "@/lib/sounds";
 
@@ -237,6 +238,8 @@ export default function HostPage() {
   // ─── Host Actions ─────────────────────────────────────
   const handleStartGame = () => {
     try {
+      // Unlock audio/speech on user gesture (required by browsers)
+      unlockAudio();
       // Apply speed settings to the engine
       if (engineRef.current) {
         const speed = SPEED_SETTINGS[gameSpeed];
@@ -366,8 +369,8 @@ export default function HostPage() {
             <h2 className="text-3xl font-black uppercase tracking-wider mb-1">
               <span className="text-accent-red">City</span>Sleeps
             </h2>
-            <p className="text-muted text-xs uppercase tracking-[0.3em] mb-2">Room Code</p>
-            <h2 className="text-5xl font-black tracking-[0.15em] text-white mb-4">{roomCode}</h2>
+            <p className="text-muted text-sm uppercase tracking-[0.3em] mb-2">Room Code</p>
+            <h2 className="text-6xl font-black tracking-[0.15em] text-white mb-4">{roomCode}</h2>
 
             <div className="flex gap-2 justify-center mb-8">
               <a
@@ -393,18 +396,18 @@ export default function HostPage() {
               </button>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-8 items-center justify-center mb-10">
-              <div className="bg-white p-3 rounded-lg">
-                <QRCodeSVG value={joinUrl} size={160} level="M" bgColor="#ffffff" fgColor="#0d0d0d" />
+            <div className="flex flex-col sm:flex-row gap-10 items-center justify-center mb-10">
+              <div className="bg-white p-4 rounded-xl">
+                <QRCodeSVG value={joinUrl} size={220} level="M" bgColor="#ffffff" fgColor="#0d0d0d" />
               </div>
 
-              <div className="flex-1 min-w-[220px] text-left">
-                <p className="text-muted text-xs uppercase tracking-[0.2em] mb-4">
+              <div className="flex-1 min-w-[240px] text-left">
+                <p className="text-muted text-sm uppercase tracking-[0.2em] mb-4">
                   Players &mdash; {gameState.players.length}
                 </p>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {gameState.players.length === 0 && (
-                    <p className="text-muted text-sm">Waiting for players...</p>
+                    <p className="text-muted text-base">Waiting for players...</p>
                   )}
                   {gameState.players.map((p, i) => (
                     <motion.div
@@ -412,12 +415,12 @@ export default function HostPage() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      className="flex items-center gap-3 bg-bg-card border border-white/5 rounded-lg px-4 py-2.5"
+                      className="flex items-center gap-3 bg-bg-card border border-white/5 rounded-lg px-4 py-3"
                     >
-                      <div className="w-7 h-7 rounded bg-accent-red/20 text-accent-red flex items-center justify-center text-xs font-bold uppercase">
+                      <div className="w-8 h-8 rounded bg-accent-red/20 text-accent-red flex items-center justify-center text-sm font-bold uppercase">
                         {p.name[0]}
                       </div>
-                      <span className="text-sm font-medium text-white/90">{p.name}</span>
+                      <span className="text-base font-medium text-white/90">{p.name}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -425,22 +428,25 @@ export default function HostPage() {
             </div>
 
             {/* Game Settings */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-8">
               {/* Game Speed */}
               <div>
-                <p className="text-muted text-[10px] uppercase tracking-widest mb-2 text-center">Game Speed</p>
-                <div className="flex gap-1.5">
+                <p className="text-muted text-xs uppercase tracking-widest mb-3 text-center">Game Speed</p>
+                <div className="flex gap-2">
                   {(["rapid", "moderate", "slow"] as GameSpeed[]).map((speed) => (
                     <button
                       key={speed}
                       onClick={() => setGameSpeed(speed)}
-                      className={`py-2 px-4 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors border ${
+                      className={`py-2.5 px-4 rounded-lg transition-colors border text-center ${
                         gameSpeed === speed
                           ? "bg-accent-red/20 border-accent-red/50 text-accent-red"
                           : "bg-bg-card border-white/5 text-muted hover:text-white/70"
                       }`}
                     >
-                      {SPEED_SETTINGS[speed].label}
+                      <span className="text-xs font-bold uppercase tracking-wider block">{SPEED_SETTINGS[speed].label}</span>
+                      <span className={`text-[10px] block mt-0.5 ${gameSpeed === speed ? "text-accent-red/70" : "text-muted/60"}`}>
+                        {speed === "rapid" ? "2 min discuss · 45s vote" : speed === "moderate" ? "5 min discuss · 90s vote" : "10 min discuss · 2 min vote"}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -448,27 +454,29 @@ export default function HostPage() {
 
               {/* Voice Selection */}
               <div>
-                <p className="text-muted text-[10px] uppercase tracking-widest mb-2 text-center">Narrator Voice</p>
-                <div className="flex gap-1.5">
+                <p className="text-muted text-xs uppercase tracking-widest mb-3 text-center">Narrator Voice</p>
+                <div className="flex gap-2">
                   <button
                     onClick={() => setVoiceChoice("male")}
-                    className={`py-2 px-5 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors border ${
+                    className={`py-2.5 px-5 rounded-lg transition-colors border text-center ${
                       voiceChoice === "male"
                         ? "bg-accent-red/20 border-accent-red/50 text-accent-red"
                         : "bg-bg-card border-white/5 text-muted hover:text-white/70"
                     }`}
                   >
-                    He
+                    <span className="text-xs font-bold uppercase tracking-wider block">Male</span>
+                    <span className={`text-[10px] block mt-0.5 ${voiceChoice === "male" ? "text-accent-red/70" : "text-muted/60"}`}>Deep &amp; commanding</span>
                   </button>
                   <button
                     onClick={() => setVoiceChoice("female")}
-                    className={`py-2 px-5 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors border ${
+                    className={`py-2.5 px-5 rounded-lg transition-colors border text-center ${
                       voiceChoice === "female"
                         ? "bg-accent-red/20 border-accent-red/50 text-accent-red"
                         : "bg-bg-card border-white/5 text-muted hover:text-white/70"
                     }`}
                   >
-                    She
+                    <span className="text-xs font-bold uppercase tracking-wider block">Female</span>
+                    <span className={`text-[10px] block mt-0.5 ${voiceChoice === "female" ? "text-accent-red/70" : "text-muted/60"}`}>Smooth &amp; relaxed</span>
                   </button>
                 </div>
               </div>

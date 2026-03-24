@@ -97,19 +97,19 @@ CREATE POLICY "Profiles readable by all" ON profiles
 CREATE POLICY "Users can update own profile" ON profiles
   FOR UPDATE USING (auth.uid() = id);
 
--- Games: authenticated can read and insert
-CREATE POLICY "Games readable by authenticated" ON games
+-- Games: anyone can read, anon or authenticated can insert
+CREATE POLICY "Games readable by all" ON games
   FOR SELECT USING (true);
 
-CREATE POLICY "Games insertable by authenticated" ON games
-  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Games insertable by anyone" ON games
+  FOR INSERT WITH CHECK (true);
 
--- Game players: authenticated can read and insert
+-- Game players: anyone can read, anon or authenticated can insert
 CREATE POLICY "Game players readable" ON game_players
   FOR SELECT USING (true);
 
 CREATE POLICY "Game players insertable" ON game_players
-  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+  FOR INSERT WITH CHECK (true);
 
 -- Profiles insertable by trigger (SECURITY DEFINER handles this)
 -- Allow service role and trigger to insert profiles

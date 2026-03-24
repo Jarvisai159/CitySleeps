@@ -8,45 +8,33 @@ export async function saveGameResult(
   const result = engine.getGameResult();
   if (!result) return { success: false, error: "Game not over" };
 
-  // Only save if there are authenticated players (UUID format IDs)
+  // Check for authenticated players (UUID format IDs from Supabase Auth)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const authenticatedPlayers = result.players.filter((p) =>
     uuidRegex.test(p.userId)
   );
-  if (authenticatedPlayers.length === 0) {
-    return { success: false, error: "No authenticated players" };
-  }
 
   try {
     const sb = getSupabase();
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-    // Try Edge Function first, fall back to direct DB insert
-    const fnUrl = `${url}/functions/v1/save-game`;
-    const {
-      data: { session },
-    } = await sb.auth.getSession();
-
-    const response = await fetch(fnUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session?.access_token ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      },
-      body: JSON.stringify({
-        roomCode,
+    // Always save the game record (even without authenticated players)
+    const { error: gameError } = await sb
+      .from("games")
+      .insert({
+        room_code: roomCode,
         winner: result.winner,
-        totalRounds: result.totalRounds,
-        players: authenticatedPlayers,
-      }),
-    });
+        total_rounds: result.totalRounds,
+        player_count: result.players.length,
+      });
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Save game error:", text);
-      // Fall back to direct insert
-      return await saveGameDirect(sb, roomCode, result, authenticatedPlayers);
+    if (gameError) {
+      console.error("Game insert error:", gameError);
+      return { success: false, error: gameError.message };
+    }
+
+    // If there are authenticated players, also save per-player stats
+    if (authenticatedPlayers.length > 0) {
+      await savePlayerStats(sb, roomCode, result, authenticatedPlayers);
     }
 
     return { success: true };
@@ -56,7 +44,7 @@ export async function saveGameResult(
   }
 }
 
-async function saveGameDirect(
+async function savePlayerStats(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sb: any,
   roomCode: string,
@@ -71,22 +59,16 @@ async function saveGameDirect(
   }>
 ) {
   try {
-    // Insert game record
-    const { data: game, error: gameError } = await sb
+    // Get the game ID we just inserted
+    const { data: game } = await sb
       .from("games")
-      .insert({
-        room_code: roomCode,
-        winner: result.winner,
-        total_rounds: result.totalRounds,
-        player_count: result.players.length,
-      })
       .select("id")
+      .eq("room_code", roomCode)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .single();
 
-    if (gameError) {
-      console.error("Game insert error:", gameError);
-      return { success: false, error: gameError.message };
-    }
+    if (!game) return;
 
     // Fetch current ratings
     const userIds = authenticatedPlayers.map((p) => p.userId);
@@ -131,11 +113,8 @@ async function saveGameDirect(
         p_won: teamWon,
       });
     }
-
-    return { success: true };
   } catch (err) {
-    console.error("Direct save error:", err);
-    return { success: false, error: "Failed to save directly" };
+    console.error("Player stats save error:", err);
   }
 }
 

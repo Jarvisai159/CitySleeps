@@ -90,6 +90,10 @@ export async function speak(text: string): Promise<void> {
   const rate = selectedVoiceType === "female" ? 0.85 : 0.9;
   const pitch = selectedVoiceType === "female" ? 1.1 : 0.75;
 
+  // Small delay after cancel() — some browsers (Chrome) drop the next
+  // utterance if it's queued immediately after cancel().
+  await new Promise((r) => setTimeout(r, 50));
+
   return new Promise((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text);
     if (voice) utterance.voice = voice;
@@ -99,6 +103,18 @@ export async function speak(text: string): Promise<void> {
     utterance.onend = () => resolve();
     utterance.onerror = () => resolve();
     speechSynthesis.speak(utterance);
+
+    // Chrome bug: long utterances pause after ~15s. Keep-alive workaround.
+    const keepAlive = setInterval(() => {
+      if (!speechSynthesis.speaking) {
+        clearInterval(keepAlive);
+      } else {
+        speechSynthesis.pause();
+        speechSynthesis.resume();
+      }
+    }, 10000);
+    utterance.onend = () => { clearInterval(keepAlive); resolve(); };
+    utterance.onerror = () => { clearInterval(keepAlive); resolve(); };
   });
 }
 
@@ -114,7 +130,26 @@ let audioCtx: AudioContext | null = null;
 
 function getCtx(): AudioContext {
   if (!audioCtx) audioCtx = new AudioContext();
+  // Resume if suspended (browser autoplay policy)
+  if (audioCtx.state === "suspended") audioCtx.resume();
   return audioCtx;
+}
+
+/**
+ * Call this on a user gesture (e.g. "Start Game" click) to unlock
+ * both AudioContext and SpeechSynthesis for the session.
+ */
+export function unlockAudio() {
+  // Unlock AudioContext
+  const ctx = getCtx();
+  if (ctx.state === "suspended") ctx.resume();
+
+  // Unlock SpeechSynthesis by speaking an empty utterance
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    const utterance = new SpeechSynthesisUtterance("");
+    utterance.volume = 0;
+    speechSynthesis.speak(utterance);
+  }
 }
 
 function playTone(

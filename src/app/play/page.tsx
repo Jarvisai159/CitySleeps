@@ -53,14 +53,16 @@ function PlayerPageInner() {
 
   const sendAction = useCallback(
     (action: Record<string, unknown>) => {
-      if (!roomCode) return;
-      getSupabase().channel(getHostChannel(roomCode)).send({
+      // Use the already-subscribed host channel (index 1 in channelsRef)
+      const hostCh = channelsRef.current[1];
+      if (!hostCh) return;
+      hostCh.send({
         type: "broadcast",
         event: "player-action",
         payload: action,
       });
     },
-    [roomCode]
+    []
   );
 
   useEffect(() => {
@@ -100,7 +102,17 @@ function PlayerPageInner() {
       })
       .subscribe();
 
-    const hostCh = sb.channel(getHostChannel(code)).subscribe();
+    // Subscribe to host channel and wait for it to be ready before sending join
+    const hostCh = sb.channel(getHostChannel(code)).subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        // Channel is ready — now send join action
+        hostCh.send({
+          type: "broadcast",
+          event: "player-action",
+          payload: { type: "join", playerId, playerName: name },
+        });
+      }
+    });
 
     const privateCh = sb
       .channel(getPlayerChannel(code, playerId))
@@ -124,10 +136,6 @@ function PlayerPageInner() {
       .subscribe();
 
     channelsRef.current = [publicCh, hostCh, privateCh];
-
-    setTimeout(() => {
-      sendAction({ type: "join", playerId, playerName: name });
-    }, 500);
 
     setScreen("lobby");
   };
