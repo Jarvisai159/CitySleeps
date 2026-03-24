@@ -112,7 +112,7 @@ async function saveGameDirect(
       survived: p.survived,
       survival_round: p.survivalRound,
       team_won: (p.team === "mafia" && result.winner === "MAFIA") ||
-        (p.team === "city" && result.winner === "VILLAGE"),
+        (p.team === "city" && result.winner === "CITY"),
       rating_before: ratingMap[p.userId] ?? 1200,
       rating_after: newRatings[p.userId] ?? ratingMap[p.userId] ?? 1200,
       rating_delta: (newRatings[p.userId] ?? ratingMap[p.userId] ?? 1200) -
@@ -124,7 +124,7 @@ async function saveGameDirect(
     // Update profiles
     for (const p of authenticatedPlayers) {
       const teamWon = (p.team === "mafia" && result.winner === "MAFIA") ||
-        (p.team === "city" && result.winner === "VILLAGE");
+        (p.team === "city" && result.winner === "CITY");
       await sb.rpc("update_player_stats", {
         p_user_id: p.userId,
         p_new_rating: newRatings[p.userId] ?? ratingMap[p.userId] ?? 1200,
@@ -153,26 +153,26 @@ function calculateRatings(
   const newRatings: Record<string, number> = {};
 
   const mafiaPlayers = players.filter((p) => p.team === "mafia");
-  const villagePlayers = players.filter((p) => p.team === "city");
+  const cityPlayers = players.filter((p) => p.team === "city");
 
   const avgMafiaRating =
     mafiaPlayers.length > 0
       ? mafiaPlayers.reduce((s, p) => s + (currentRatings[p.userId] ?? 1200), 0) /
         mafiaPlayers.length
       : 1200;
-  const avgVillageRating =
-    villagePlayers.length > 0
-      ? villagePlayers.reduce((s, p) => s + (currentRatings[p.userId] ?? 1200), 0) /
-        villagePlayers.length
+  const avgCityRating =
+    cityPlayers.length > 0
+      ? cityPlayers.reduce((s, p) => s + (currentRatings[p.userId] ?? 1200), 0) /
+        cityPlayers.length
       : 1200;
 
   for (const player of players) {
     const myRating = currentRatings[player.userId] ?? 1200;
-    const oppAvgRating = player.team === "mafia" ? avgVillageRating : avgMafiaRating;
+    const oppAvgRating = player.team === "mafia" ? avgCityRating : avgMafiaRating;
 
     const teamWon =
       (player.team === "mafia" && result.winner === "MAFIA") ||
-      (player.team === "city" && result.winner === "VILLAGE");
+      (player.team === "city" && result.winner === "CITY");
     const actual = teamWon ? 1 : 0;
     const expected = 1 / (1 + Math.pow(10, (oppAvgRating - myRating) / 400));
     const baseDelta = K * (actual - expected);

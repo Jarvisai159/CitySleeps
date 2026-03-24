@@ -62,7 +62,7 @@ export class GameEngine {
   settings: GameSettings;
   nightResult: NightResult | null = null;
   voteResult: VoteResult | null = null;
-  winner: "MAFIA" | "VILLAGE" | null = null;
+  winner: "MAFIA" | "CITY" | null = null;
   lastHealerSave: string | null = null;
 
   private onStateChange: (state: GameState) => void;
@@ -481,17 +481,17 @@ export class GameEngine {
     return Array.from(this.players.values()).filter((p) => p.isAlive);
   }
 
-  private checkWinCondition(): "MAFIA" | "VILLAGE" | null {
+  private checkWinCondition(): "MAFIA" | "CITY" | null {
     const alive = this.getAlivePlayers();
     const mafiaCount = alive.filter((p) => isMafiaTeam(p.role!)).length;
-    const villageCount = alive.filter((p) => !isMafiaTeam(p.role!)).length;
-    if (mafiaCount === 0) return "VILLAGE";
-    if (mafiaCount >= villageCount) return "MAFIA";
+    const cityCount = alive.filter((p) => !isMafiaTeam(p.role!)).length;
+    if (mafiaCount === 0) return "CITY";
+    if (mafiaCount >= cityCount) return "MAFIA";
     return null;
   }
 
   getGameResult(): {
-    winner: "MAFIA" | "VILLAGE";
+    winner: "MAFIA" | "CITY";
     totalRounds: number;
     players: Array<{
       userId: string;

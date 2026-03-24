@@ -417,7 +417,7 @@ function PlayerPageInner() {
                   <div className="w-16 h-px bg-accent-red mx-auto mb-6" />
                   <p className="text-muted text-xs uppercase tracking-[0.3em] mb-2">Game Over</p>
                   <h2 className="text-2xl font-black uppercase tracking-wider mb-2">
-                    {gameState.winner === "VILLAGE" ? "Civilians Win" : <span className="text-accent-red">Mafia Wins</span>}
+                    {gameState.winner === "CITY" ? "Civilians Win" : <span className="text-accent-red">Mafia Wins</span>}
                   </h2>
                   {myRole && (
                     <p className="text-muted-light text-sm mb-8">

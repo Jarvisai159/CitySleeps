@@ -41,7 +41,7 @@ CREATE TRIGGER on_auth_user_created
 CREATE TABLE IF NOT EXISTS games (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   room_code TEXT NOT NULL,
-  winner TEXT NOT NULL CHECK (winner IN ('MAFIA', 'VILLAGE')),
+  winner TEXT NOT NULL CHECK (winner IN ('MAFIA', 'CITY')),
   total_rounds INT NOT NULL,
   player_count INT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()

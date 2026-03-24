@@ -64,7 +64,7 @@ export interface GameState {
   players: PublicPlayer[];
   nightResult: NightResult | null;
   voteResult: VoteResult | null;
-  winner: "MAFIA" | "VILLAGE" | null;
+  winner: "MAFIA" | "CITY" | null;
   timer: number | null;
   allRoles?: Record<string, Role>;
   votes?: Record<string, string>;
@@ -102,7 +102,7 @@ export const ROLE_INFO: Record<
     symbol: "M",
     color: "#C41E3A",
     team: "mafia",
-    description: "Eliminate villagers at night. Stay hidden during the day.",
+    description: "Eliminate civilians at night. Stay hidden during the day.",
   },
   TERRORIST: {
     name: "Terrorist",

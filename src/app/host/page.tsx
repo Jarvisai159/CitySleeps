@@ -185,7 +185,7 @@ export default function HostPage() {
         playVictorySound();
         setTimeout(() => {
           speak(
-            gameState.winner === "VILLAGE"
+            gameState.winner === "CITY"
               ? "Game over. The Civilians win! All Mafia members have been eliminated."
               : "Game over. The Mafia wins! They have taken over the city."
           );
@@ -605,14 +605,14 @@ export default function HostPage() {
               <div className="w-16 h-px bg-accent-red mx-auto mb-8" />
               <p className="text-muted text-xs uppercase tracking-[0.3em] mb-3">Game Over</p>
               <h2 className="text-4xl font-black uppercase tracking-wider mb-2">
-                {gameState.winner === "VILLAGE" ? (
+                {gameState.winner === "CITY" ? (
                   <span className="text-white">Civilians Win</span>
                 ) : (
                   <span className="text-accent-red">Mafia Wins</span>
                 )}
               </h2>
               <p className="text-muted-light text-sm mb-10">
-                {gameState.winner === "VILLAGE"
+                {gameState.winner === "CITY"
                   ? "All Mafia members have been found and eliminated."
                   : "The Mafia has taken over the city."}
               </p>
