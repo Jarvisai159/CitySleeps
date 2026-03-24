@@ -68,6 +68,18 @@ function PlayerPageInner() {
   useEffect(() => {
     if (!gameState) return;
     const phase = gameState.phase;
+    if (phase === "LOBBY") {
+      // Game was reset — go back to lobby, clear all game state
+      setScreen("lobby");
+      setMyRole(null);
+      setMafiaTeam([]);
+      setRoleRevealed(false);
+      setActionPrompt(null);
+      setActionSubmitted(false);
+      setDetectiveResult(null);
+      setSpyIntel(null);
+      setHasVoted(false);
+    }
     if (phase === "ROLE_REVEAL") setRoleRevealed(false);
     if (phase.startsWith("NIGHT")) {
       setActionSubmitted(false);

@@ -279,6 +279,14 @@ export default function HostPage() {
 
   const handleNextRound = () => engineRef.current?.proceedAfterElimination();
 
+  const handlePlayAgain = () => {
+    stopSpeech();
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimer(null);
+    setError(null);
+    engineRef.current?.resetToLobby();
+  };
+
   const handleNewGame = () => {
     stopSpeech();
     try {
@@ -361,6 +369,17 @@ export default function HostPage() {
         )}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-accent-darkred/5 blur-[150px] rounded-full" />
       </div>
+
+      {/* ─── Persistent QR sidebar (visible during game, not lobby) ─── */}
+      {gameState.phase !== "LOBBY" && (
+        <div className="fixed top-4 right-4 z-50 bg-bg-card/90 backdrop-blur border border-white/10 rounded-xl p-3 flex flex-col items-center gap-2 shadow-lg">
+          <div className="bg-white p-2 rounded-lg">
+            <QRCodeSVG value={joinUrl} size={80} level="M" bgColor="#ffffff" fgColor="#0d0d0d" />
+          </div>
+          <p className="text-white text-xs font-black tracking-wider">{roomCode}</p>
+          <p className="text-muted text-[9px] uppercase tracking-widest">Scan to join</p>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {/* ─── LOBBY ───────────────────────────────── */}
@@ -714,9 +733,14 @@ export default function HostPage() {
               })}
             </div>
 
-            <button onClick={handleNewGame} className="py-3.5 px-14 bg-accent-red hover:bg-accent-crimson text-white text-sm font-bold uppercase tracking-widest rounded-lg transition-colors">
-              New Game
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button onClick={handlePlayAgain} className="py-3.5 px-14 bg-accent-red hover:bg-accent-crimson text-white text-sm font-bold uppercase tracking-widest rounded-lg transition-colors">
+                Play Again
+              </button>
+              <button onClick={handleNewGame} className="py-3.5 px-10 bg-bg-elevated hover:bg-bg-hover text-muted-light text-sm font-bold uppercase tracking-widest rounded-lg transition-colors border border-white/10">
+                New Room
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

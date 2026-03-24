@@ -521,6 +521,24 @@ export class GameEngine {
     };
   }
 
+  /** Reset game back to LOBBY keeping all connected players */
+  resetToLobby(): void {
+    for (const player of this.players.values()) {
+      player.role = null;
+      player.isAlive = true;
+      player.deathRound = null;
+    }
+    this.phase = "LOBBY";
+    this.round = 0;
+    this.nightActions = { mafiaVotes: {}, mafiaTarget: null, healerSave: null, detectiveTarget: null };
+    this.votes = {};
+    this.nightResult = null;
+    this.voteResult = null;
+    this.winner = null;
+    this.lastHealerSave = null;
+    this.broadcastState();
+  }
+
   private broadcastState(): void {
     this.onStateChange(this.getGameState());
   }
