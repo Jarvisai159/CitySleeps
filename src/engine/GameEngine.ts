@@ -505,7 +505,7 @@ export class GameEngine {
     if (this.phase !== "GAME_OVER" || !this.winner) return null;
     const ROLE_TEAMS: Record<string, string> = {
       MAFIA: "mafia", TERRORIST: "mafia",
-      HEALER: "village", DETECTIVE: "village", SPY: "village", CIVILIAN: "village",
+      HEALER: "city", DETECTIVE: "city", SPY: "city", CIVILIAN: "city",
     };
     return {
       winner: this.winner,
@@ -514,7 +514,7 @@ export class GameEngine {
         userId: p.id,
         name: p.name,
         role: p.role!,
-        team: ROLE_TEAMS[p.role!] ?? "village",
+        team: ROLE_TEAMS[p.role!] ?? "city",
         survived: p.isAlive,
         survivalRound: p.deathRound ?? this.round,
       })),

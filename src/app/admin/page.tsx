@@ -199,7 +199,7 @@ export default function AdminPage() {
               <StatCard label="Avg Rating" value={stats.avg_rating ?? "—"} />
               <StatCard label="Avg Players/Game" value={stats.avg_players_per_game ?? "—"} />
               <StatCard label="Mafia Win Rate" value={stats.mafia_win_rate !== null ? `${stats.mafia_win_rate}%` : "—"} />
-              <StatCard label="Village Win Rate" value={stats.mafia_win_rate !== null ? `${(100 - stats.mafia_win_rate).toFixed(1)}%` : "—"} />
+              <StatCard label="City Win Rate" value={stats.mafia_win_rate !== null ? `${(100 - stats.mafia_win_rate).toFixed(1)}%` : "—"} />
             </div>
           )}
 
@@ -264,7 +264,7 @@ export default function AdminPage() {
                           <td className="p-3 font-mono text-white">{g.room_code}</td>
                           <td className="p-3 text-center">
                             <span className={g.winner === "MAFIA" ? "text-accent-red font-bold" : "text-green-500 font-bold"}>
-                              {g.winner === "MAFIA" ? "Mafia" : "Village"}
+                              {g.winner === "MAFIA" ? "Mafia" : "City"}
                             </span>
                           </td>
                           <td className="p-3 text-center text-muted-light">{g.total_rounds}</td>

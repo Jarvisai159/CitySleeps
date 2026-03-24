@@ -65,8 +65,8 @@ export default function Home() {
                 </p>
                 <p>
                   The game alternates between <strong>Night</strong> (Mafia acts in secret) and{" "}
-                  <strong>Day</strong> (everyone debates and votes). The village wins by eliminating
-                  all Mafia. The Mafia wins by outnumbering the village.
+                  <strong>Day</strong> (everyone debates and votes). The city wins by eliminating
+                  all Mafia. The Mafia wins by outnumbering the city.
                 </p>
               </Section>
 
@@ -85,14 +85,14 @@ export default function Home() {
                   <RoleCard name="Mafia" symbol="M" color="#C41E3A" team="Mafia Team"
                     desc="The killers. Each night, all Mafia members secretly choose one player to eliminate. During the day, they must blend in. Mafia members know each other." />
                   <RoleCard name="Terrorist" symbol="T" color="#E85D04" team="Mafia Team"
-                    desc="Aligned with the Mafia but does not wake at night. A sleeper agent. If the Terrorist is voted out during the day, they take one random villager down with them." />
-                  <RoleCard name="Healer" symbol="H" color="#2D8B46" team="Village Team"
+                    desc="Aligned with the Mafia but does not wake at night. A sleeper agent. If the Terrorist is voted out during the day, they take one random civilian down with them." />
+                  <RoleCard name="Healer" symbol="H" color="#2D8B46" team="City Team"
                     desc="Each night, choose one player to protect. If the Mafia targets that player, they survive. Cannot save the same person two nights in a row." />
-                  <RoleCard name="Detective" symbol="?" color="#2563EB" team="Village Team"
+                  <RoleCard name="Detective" symbol="?" color="#2563EB" team="City Team"
                     desc="Each night, investigate one player. Learn if they are aligned with the Mafia or not. Be careful — revealing yourself makes you a target." />
-                  <RoleCard name="Spy" symbol="S" color="#7C3AED" team="Village Team"
+                  <RoleCard name="Spy" symbol="S" color="#7C3AED" team="City Team"
                     desc="Wakes with the Mafia at night — sees their identities and who they target. But appears as Mafia to the Detective. Use your intel carefully without revealing yourself." />
-                  <RoleCard name="Civilian" symbol="C" color="#9CA3AF" team="Village Team"
+                  <RoleCard name="Civilian" symbol="C" color="#9CA3AF" team="City Team"
                     desc="No special ability. Your power is your voice and your vote. Pay attention, ask questions, and figure out who the Mafia is." />
                 </div>
               </Section>
@@ -149,8 +149,8 @@ export default function Home() {
                         <th className="text-center p-2">M</th>
                         <th className="text-center p-2">T</th>
                         <th className="text-center p-2">H</th>
-                        <th className="text-center p-2">Det</th>
-                        <th className="text-center p-2">Spy</th>
+                        <th className="text-center p-2">D</th>
+                        <th className="text-center p-2">S</th>
                         <th className="text-center p-2">C</th>
                       </tr>
                     </thead>
@@ -164,7 +164,7 @@ export default function Home() {
                   </table>
                 </div>
                 <p className="text-muted text-[10px] mt-2 uppercase tracking-wider">
-                  M = Mafia &middot; T = Terrorist &middot; H = Healer &middot; Det = Detective &middot; C = Civilian
+                  M = Mafia &middot; T = Terrorist &middot; H = Healer &middot; D = Detective &middot; S = Spy &middot; C = Civilian
                 </p>
               </Section>
 

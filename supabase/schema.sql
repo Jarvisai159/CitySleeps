@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS game_players (
   game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id),
   role TEXT NOT NULL,
-  team TEXT NOT NULL CHECK (team IN ('mafia', 'village')),
+  team TEXT NOT NULL CHECK (team IN ('mafia', 'city')),
   survived BOOLEAN NOT NULL,
   survival_round INT NOT NULL,
   team_won BOOLEAN NOT NULL,
