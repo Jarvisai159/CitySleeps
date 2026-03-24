@@ -53,7 +53,7 @@ export default function Home() {
         <div className="flex-1 border-l border-white/[0.06] bg-bg-card/30 overflow-y-auto">
           <div className="max-w-xl mx-auto px-8 py-12 lg:py-16">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-              <h2 className="text-lg font-black uppercase tracking-[0.2em] text-white mb-10">
+              <h2 className="text-2xl font-black uppercase tracking-[0.2em] text-white mb-10">
                 How to Play
               </h2>
 
@@ -88,7 +88,7 @@ export default function Home() {
                     desc="Aligned with the Mafia but does not wake at night. A sleeper agent. If the Terrorist is voted out during the day, they take one random civilian down with them." />
                   <RoleCard name="Healer" symbol="H" color="#2D8B46" team="City Team"
                     desc="Each night, choose one player to protect. If the Mafia targets that player, they survive. Cannot save the same person two nights in a row." />
-                  <RoleCard name="Detective" symbol="?" color="#2563EB" team="City Team"
+                  <RoleCard name="Detective" symbol="D" color="#2563EB" team="City Team"
                     desc="Each night, investigate one player. Learn if they are aligned with the Mafia or not. Be careful — revealing yourself makes you a target." />
                   <RoleCard name="Spy" symbol="S" color="#7C3AED" team="City Team"
                     desc="Wakes with the Mafia at night — sees their identities and who they target. But appears as Mafia to the Detective. Use your intel carefully without revealing yourself." />

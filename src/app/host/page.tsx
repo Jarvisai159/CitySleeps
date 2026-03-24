@@ -20,7 +20,16 @@ import {
   playDawnChime,
   playEliminationSound,
   playVictorySound,
+  setVoiceType,
+  type VoiceType,
 } from "@/lib/sounds";
+
+type GameSpeed = "rapid" | "moderate" | "slow";
+const SPEED_SETTINGS: Record<GameSpeed, { discussion: number; voting: number; label: string }> = {
+  rapid: { discussion: 120, voting: 45, label: "Rapid" },
+  moderate: { discussion: 300, voting: 90, label: "Moderate" },
+  slow: { discussion: 600, voting: 120, label: "Slow" },
+};
 
 export default function HostPage() {
   const [roomCode, setRoomCode] = useState<string | null>(null);
@@ -28,6 +37,8 @@ export default function HostPage() {
   const [timer, setTimer] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [gameSpeed, setGameSpeed] = useState<GameSpeed>("rapid");
+  const [voiceChoice, setVoiceChoice] = useState<VoiceType>("male");
   const engineRef = useRef<GameEngine | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -226,6 +237,14 @@ export default function HostPage() {
   // ─── Host Actions ─────────────────────────────────────
   const handleStartGame = () => {
     try {
+      // Apply speed settings to the engine
+      if (engineRef.current) {
+        const speed = SPEED_SETTINGS[gameSpeed];
+        engineRef.current.settings.discussionTime = speed.discussion;
+        engineRef.current.settings.votingTime = speed.voting;
+      }
+      // Apply voice choice
+      setVoiceType(voiceChoice);
       engineRef.current?.startGame();
       setError(null);
     } catch (err: unknown) {
@@ -401,6 +420,56 @@ export default function HostPage() {
                       <span className="text-sm font-medium text-white/90">{p.name}</span>
                     </motion.div>
                   ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Game Settings */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+              {/* Game Speed */}
+              <div>
+                <p className="text-muted text-[10px] uppercase tracking-widest mb-2 text-center">Game Speed</p>
+                <div className="flex gap-1.5">
+                  {(["rapid", "moderate", "slow"] as GameSpeed[]).map((speed) => (
+                    <button
+                      key={speed}
+                      onClick={() => setGameSpeed(speed)}
+                      className={`py-2 px-4 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors border ${
+                        gameSpeed === speed
+                          ? "bg-accent-red/20 border-accent-red/50 text-accent-red"
+                          : "bg-bg-card border-white/5 text-muted hover:text-white/70"
+                      }`}
+                    >
+                      {SPEED_SETTINGS[speed].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Voice Selection */}
+              <div>
+                <p className="text-muted text-[10px] uppercase tracking-widest mb-2 text-center">Narrator Voice</p>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setVoiceChoice("male")}
+                    className={`py-2 px-5 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors border ${
+                      voiceChoice === "male"
+                        ? "bg-accent-red/20 border-accent-red/50 text-accent-red"
+                        : "bg-bg-card border-white/5 text-muted hover:text-white/70"
+                    }`}
+                  >
+                    He
+                  </button>
+                  <button
+                    onClick={() => setVoiceChoice("female")}
+                    className={`py-2 px-5 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors border ${
+                      voiceChoice === "female"
+                        ? "bg-accent-red/20 border-accent-red/50 text-accent-red"
+                        : "bg-bg-card border-white/5 text-muted hover:text-white/70"
+                    }`}
+                  >
+                    She
+                  </button>
                 </div>
               </div>
             </div>

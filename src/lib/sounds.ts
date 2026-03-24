@@ -1,6 +1,17 @@
 // ─── Voice Narration (Web Speech API) ────────────────────
 
+export type VoiceType = "male" | "female";
+
 let voicesLoaded = false;
+let selectedVoiceType: VoiceType = "male";
+
+export function setVoiceType(type: VoiceType) {
+  selectedVoiceType = type;
+}
+
+export function getVoiceType(): VoiceType {
+  return selectedVoiceType;
+}
 
 function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   return new Promise((resolve) => {
@@ -19,8 +30,8 @@ function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   });
 }
 
-function getPreferredVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
-  // Prefer deeper English voices
+function getMaleVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  // Deep, authoritative "god" voice
   const preferred = [
     "Google UK English Male",
     "Microsoft David",
@@ -33,18 +44,51 @@ function getPreferredVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice
     const v = voices.find((voice) => voice.name.includes(name));
     if (v) return v;
   }
-  // Fall back to any English voice
-  return voices.find((v) => v.lang.startsWith("en")) ?? voices[0] ?? null;
+  // Fall back to any English male-sounding voice
+  const male = voices.find(
+    (v) => v.lang.startsWith("en") && /male|david|mark|daniel|james|guy/i.test(v.name)
+  );
+  return male ?? voices.find((v) => v.lang.startsWith("en")) ?? voices[0] ?? null;
 }
 
-export async function speak(text: string, rate = 0.9, pitch = 0.85): Promise<void> {
+function getFemaleVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  // Sensual, relaxed feminine voice
+  const preferred = [
+    "Google UK English Female",
+    "Microsoft Zira",
+    "Samantha",
+    "Karen",
+    "Victoria",
+    "Moira",
+    "Tessa",
+    "Google US English",
+  ];
+  for (const name of preferred) {
+    const v = voices.find((voice) => voice.name.includes(name));
+    if (v) return v;
+  }
+  // Fall back to any English female-sounding voice
+  const female = voices.find(
+    (v) =>
+      v.lang.startsWith("en") &&
+      /female|zira|samantha|karen|victoria|moira|tessa|fiona|susan/i.test(v.name)
+  );
+  return female ?? voices.find((v) => v.lang.startsWith("en")) ?? voices[0] ?? null;
+}
+
+export async function speak(text: string): Promise<void> {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
   // Cancel any ongoing speech
   speechSynthesis.cancel();
 
   const voices = await loadVoices();
-  const voice = getPreferredVoice(voices);
+  const voice =
+    selectedVoiceType === "female" ? getFemaleVoice(voices) : getMaleVoice(voices);
+
+  // Male: deep, slow, commanding. Female: smooth, relaxed, slightly breathy.
+  const rate = selectedVoiceType === "female" ? 0.85 : 0.9;
+  const pitch = selectedVoiceType === "female" ? 1.1 : 0.75;
 
   return new Promise((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text);

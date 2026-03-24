@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CitySleeps — The Party Game",
+  title: "CitySleeps — The Social Deduction Game",
   description:
     "A competitive social deduction game. One device moderates, everyone plays on their phones.",
 };
