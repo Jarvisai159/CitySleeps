@@ -547,15 +547,16 @@ function DeadBadge() {
 
 function ShareCTA({ gameUrl, theme }: { gameUrl: string; theme: ReturnType<typeof import("@/lib/gameTheme").getTheme> }) {
   const [copied, setCopied] = useState(false);
-  const brandName = `${theme.brand.first}${theme.brand.second}`;
-  const shareText = `Just played ${brandName} with friends and it was insane! Try it out: ${gameUrl}`;
+  const shareText = theme.mode === "dhurandhar"
+    ? `Just played Dhurandhar Mode on CitySleeps — an epic social deduction game inspired by the movie! Try it out: ${gameUrl}`
+    : `Just played CitySleeps with friends and it was insane! The ultimate social deduction game. Try it out: ${gameUrl}`;
 
   const handleInstagramShare = async () => {
     // Try native share first (shows Instagram on mobile)
     if (navigator.share) {
       try {
         await navigator.share({
-          title: brandName,
+          title: "CitySleeps",
           text: shareText,
           url: gameUrl,
         });
