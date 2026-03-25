@@ -15,7 +15,7 @@ export function ModeToggle() {
             : "text-muted hover:text-white/70"
         }`}
       >
-        Dhurandhar
+        Dhurandhar Mode
       </button>
       <button
         onClick={() => setMode("classic")}
@@ -25,7 +25,7 @@ export function ModeToggle() {
             : "text-muted hover:text-white/70"
         }`}
       >
-        Classic
+        Classic Game
       </button>
     </div>
   );
