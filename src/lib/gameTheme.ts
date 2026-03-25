@@ -8,6 +8,7 @@ export interface RoleDisplay {
   color: string;
   team: string;
   description: string;
+  classicName?: string;
 }
 
 export interface GameTheme {
@@ -109,27 +110,27 @@ const DHURANDHAR_THEME: GameTheme = {
   },
   roles: {
     MAFIA: {
-      name: "ISI Agent", symbol: "I", color: "#1B5E20", team: "isi",
+      name: "ISI Agent", symbol: "I", color: "#1B5E20", team: "isi", classicName: "Mafia",
       description: "Eliminate targets at night. Stay hidden during the day. You are an ISI operative in India.",
     },
     TERRORIST: {
-      name: "Kasab", symbol: "K", color: "#E85D04", team: "isi",
+      name: "Ajmal Kasab", symbol: "K", color: "#E85D04", team: "isi", classicName: "Terrorist",
       description: "ISI sleeper agent. Does not wake at night. If caught and voted out, takes one innocent down with you.",
     },
     HEALER: {
-      name: "Aalam Bhai", symbol: "A", color: "#E91E63", team: "india",
+      name: "Aalam Bhai", symbol: "A", color: "#E91E63", team: "india", classicName: "Healer",
       description: "Choose one person to protect each night. Your care saves lives in the shadows of India.",
     },
     DETECTIVE: {
-      name: "Ajay Sanyal", symbol: "S", color: "#2563EB", team: "india",
+      name: "Ajay Sanyal", symbol: "S", color: "#2563EB", team: "india", classicName: "Detective",
       description: "Investigate one person each night to learn their allegiance. The safety of India rests on your shoulders.",
     },
     SPY: {
-      name: "Hamza Ali Mazari", symbol: "H", color: "#FF9933", team: "india",
+      name: "Hamza Ali Mazari", symbol: "H", color: "#FF9933", team: "india", classicName: "Spy",
       description: "India's ace agent — the Dhurandhar. Wakes with ISI — sees their identities and target. But appears as ISI to Ajay Sanyal. Use your intel wisely.",
     },
     CIVILIAN: {
-      name: "Awaam", symbol: "W", color: "#9CA3AF", team: "india",
+      name: "Awaam", symbol: "W", color: "#9CA3AF", team: "india", classicName: "Civilian",
       description: "The people of India. Your power is your voice and your vote. Find the ISI agents and protect your nation.",
     },
   },
@@ -145,11 +146,11 @@ const DHURANDHAR_THEME: GameTheme = {
     discussion: "Discussion begins. The people of India must decide. Who among you is the enemy?",
     vote: "Time to vote. Use your phones to cast your vote now.",
     eliminated: (name, roleName) => `The people have spoken. ${name} has been eliminated. They were ${roleName}.`,
-    terroristRevenge: (name) => `But Kasab's final act takes ${name} down as well!`,
+    terroristRevenge: (name) => `But Ajmal Kasab's final act takes ${name} down as well!`,
     gameOverGood: "Game over. Operation success! All ISI operatives have been neutralised.",
     gameOverEvil: "Game over. ISI wins! They have taken control.",
   },
-  legend: "I = ISI Agent \u00B7 K = Kasab \u00B7 A = Aalam Bhai \u00B7 S = Ajay Sanyal \u00B7 H = Hamza Ali Mazari \u00B7 W = Awaam",
+  legend: "I = ISI Agent \u00B7 K = Ajmal Kasab \u00B7 A = Aalam Bhai \u00B7 S = Ajay Sanyal \u00B7 H = Hamza Ali Mazari \u00B7 W = Awaam",
   shareText: (code, url) => `Join my Operation Dhurandhar game! Enter code ${code} or click: ${url}`,
 };
 

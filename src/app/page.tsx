@@ -134,6 +134,7 @@ export default function Home() {
                       color={r[role].color}
                       team={role === "MAFIA" || role === "TERRORIST" ? theme.teamNames.evil : theme.teamNames.good}
                       desc={r[role].description}
+                      classicName={r[role].classicName}
                     />
                   ))}
                 </div>
@@ -242,7 +243,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function RoleCard({ name, symbol, color, team, desc }: { name: string; symbol: string; color: string; team: string; desc: string }) {
+function RoleCard({ name, symbol, color, team, desc, classicName }: { name: string; symbol: string; color: string; team: string; desc: string; classicName?: string }) {
   return (
     <div className="bg-bg-primary rounded-lg p-4 border" style={{ borderColor: `${color}20` }}>
       <div className="flex items-center gap-3 mb-2">
@@ -251,6 +252,7 @@ function RoleCard({ name, symbol, color, team, desc }: { name: string; symbol: s
         </div>
         <div>
           <span className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{name}</span>
+          {classicName && <span className="text-muted text-[10px] ml-1">({classicName})</span>}
           <span className="text-muted text-[10px] ml-2 uppercase tracking-wider">{team}</span>
         </div>
       </div>
