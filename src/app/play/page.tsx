@@ -182,7 +182,8 @@ function PlayerPageInner() {
           <motion.div key="join" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full max-w-sm">
             <div className="w-12 h-px bg-accent-red mx-auto mb-8" />
             <h1 className="text-2xl font-black text-center uppercase tracking-wider mb-10">
-              <span className="text-accent-red">{theme.brand.first}</span>{theme.brand.second}
+              <span className={theme.brand.accentSecond ? "text-white" : "text-accent-red"}>{theme.brand.first}</span>
+              <span className={theme.brand.accentSecond ? "text-accent-red" : "text-white"}>{theme.brand.second}</span>
             </h1>
 
             <div className="space-y-5 mb-8">

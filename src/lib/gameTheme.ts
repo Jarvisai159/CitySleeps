@@ -12,7 +12,7 @@ export interface RoleDisplay {
 
 export interface GameTheme {
   mode: GameMode;
-  brand: { first: string; second: string; subtitle: string };
+  brand: { first: string; second: string; subtitle: string; accentSecond?: boolean };
   teamNames: { good: string; evil: string };
   win: {
     goodTitle: string;
@@ -99,7 +99,7 @@ const CLASSIC_THEME: GameTheme = {
 
 const DHURANDHAR_THEME: GameTheme = {
   mode: "dhurandhar",
-  brand: { first: "Operation", second: "Dhurandhar", subtitle: "Inspired by the Film" },
+  brand: { first: "Operation", second: "D", subtitle: "Inspired by the Film", accentSecond: true },
   teamNames: { good: "India", evil: "ISI" },
   win: {
     goodTitle: "Operation Success",
@@ -110,46 +110,46 @@ const DHURANDHAR_THEME: GameTheme = {
   roles: {
     MAFIA: {
       name: "ISI Agent", symbol: "I", color: "#1B5E20", team: "isi",
-      description: "Eliminate targets at night. Stay hidden during the day. You are an ISI operative in Lyari.",
+      description: "Eliminate targets at night. Stay hidden during the day. You are an ISI operative in India.",
     },
     TERRORIST: {
       name: "Kasab", symbol: "K", color: "#E85D04", team: "isi",
       description: "ISI sleeper agent. Does not wake at night. If caught and voted out, takes one innocent down with you.",
     },
     HEALER: {
-      name: "Alina Jameel", symbol: "A", color: "#E91E63", team: "india",
-      description: "Choose one person to protect each night. Your care saves lives in the shadows of Lyari.",
+      name: "Aalam Bhai", symbol: "A", color: "#E91E63", team: "india",
+      description: "Choose one person to protect each night. Your care saves lives in the shadows of India.",
     },
     DETECTIVE: {
-      name: "Sardar Aslam", symbol: "S", color: "#2563EB", team: "india",
-      description: "Investigate one person each night to learn their allegiance. The law of Lyari rests on your shoulders.",
+      name: "Ajay Sanyal", symbol: "S", color: "#2563EB", team: "india",
+      description: "Investigate one person each night to learn their allegiance. The safety of India rests on your shoulders.",
     },
     SPY: {
       name: "Hamza Ali Mazari", symbol: "H", color: "#FF9933", team: "india",
-      description: "India's ace agent — the Dhurandhar. Wakes with ISI — sees their identities and target. But appears as ISI to Sardar Aslam. Use your intel wisely.",
+      description: "India's ace agent — the Dhurandhar. Wakes with ISI — sees their identities and target. But appears as ISI to Ajay Sanyal. Use your intel wisely.",
     },
     CIVILIAN: {
       name: "Awaam", symbol: "W", color: "#9CA3AF", team: "india",
-      description: "The people of Lyari. Your power is your voice and your vote. Find the ISI agents and protect your city.",
+      description: "The people of India. Your power is your voice and your vote. Find the ISI agents and protect your nation.",
     },
   },
   narration: {
     roleReveal: "Roles have been assigned. Check your phones now. Do not reveal your identity to anyone.",
-    nightFirst: "Night falls over Lyari. Everyone, close your eyes. ISI agents, open your eyes. Hamza Ali Mazari, open your eyes. You may see each other, but only ISI may choose a target.",
-    nightRepeat: "Night falls over Lyari. Everyone, close your eyes. ISI and Hamza, open your eyes. ISI, choose your target.",
-    healerPrompt: "ISI and Hamza, close your eyes. Alina Jameel, open your eyes. Choose someone to protect tonight.",
-    detectivePrompt: "Alina, close your eyes. Sardar Aslam, open your eyes. Choose someone to investigate.",
-    dawnKilled: (name) => `Close your eyes. Everyone, open your eyes. Dawn breaks over Lyari. Last night, ${name} was eliminated by ISI agents.`,
-    dawnSaved: "Close your eyes. Everyone, open your eyes. Dawn breaks over Lyari. No one died last night. Alina Jameel made a crucial save.",
-    dawnPeaceful: "Close your eyes. Everyone, open your eyes. Dawn breaks over Lyari. It was a quiet night.",
-    discussion: "Discussion begins. The people of Lyari must decide. Who among you is the enemy?",
+    nightFirst: "Night falls over India. Everyone, close your eyes. ISI agents, open your eyes. Hamza Ali Mazari, open your eyes. You may see each other, but only ISI may choose a target.",
+    nightRepeat: "Night falls over India. Everyone, close your eyes. ISI and Hamza, open your eyes. ISI, choose your target.",
+    healerPrompt: "ISI and Hamza, close your eyes. Aalam Bhai, open your eyes. Choose someone to protect tonight.",
+    detectivePrompt: "Aalam Bhai, close your eyes. Ajay Sanyal, open your eyes. Choose someone to investigate.",
+    dawnKilled: (name) => `Close your eyes. Everyone, open your eyes. Dawn breaks over India. Last night, ${name} was eliminated by ISI agents.`,
+    dawnSaved: "Close your eyes. Everyone, open your eyes. Dawn breaks over India. No one died last night. Aalam Bhai made a crucial save.",
+    dawnPeaceful: "Close your eyes. Everyone, open your eyes. Dawn breaks over India. It was a quiet night.",
+    discussion: "Discussion begins. The people of India must decide. Who among you is the enemy?",
     vote: "Time to vote. Use your phones to cast your vote now.",
     eliminated: (name, roleName) => `The people have spoken. ${name} has been eliminated. They were ${roleName}.`,
     terroristRevenge: (name) => `But Kasab's final act takes ${name} down as well!`,
     gameOverGood: "Game over. Operation success! All ISI operatives have been neutralised.",
-    gameOverEvil: "Game over. ISI wins! They have taken control of Lyari.",
+    gameOverEvil: "Game over. ISI wins! They have taken control.",
   },
-  legend: "I = ISI Agent \u00B7 K = Kasab \u00B7 A = Alina Jameel \u00B7 S = Sardar Aslam \u00B7 H = Hamza Ali Mazari \u00B7 W = Awaam",
+  legend: "I = ISI Agent \u00B7 K = Kasab \u00B7 A = Aalam Bhai \u00B7 S = Ajay Sanyal \u00B7 H = Hamza Ali Mazari \u00B7 W = Awaam",
   shareText: (code, url) => `Join my Operation Dhurandhar game! Enter code ${code} or click: ${url}`,
 };
 

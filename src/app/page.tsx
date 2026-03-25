@@ -33,8 +33,8 @@ export default function Home() {
             <div className="w-16 h-px bg-accent-red mx-auto mb-8" />
 
             <h1 className="text-5xl sm:text-6xl font-black tracking-tight uppercase mb-2">
-              <span className="text-accent-red">{theme.brand.first}</span>
-              <span className="text-white">{theme.brand.second}</span>
+              <span className={theme.brand.accentSecond ? "text-white" : "text-accent-red"}>{theme.brand.first}</span>
+              <span className={theme.brand.accentSecond ? "text-accent-red" : "text-white"}>{theme.brand.second}</span>
             </h1>
             <div className="inline-block px-3 py-1 bg-amber-500/15 border border-amber-500/30 rounded-full mb-3">
               <span className="text-amber-400 text-[10px] font-bold uppercase tracking-widest">Beta</span>
@@ -65,7 +65,8 @@ export default function Home() {
             <div className="bg-bg-card/60 border border-white/5 rounded-lg p-4">
               <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Beta Version</p>
               <p className="text-muted-light text-[11px] leading-relaxed">
-                This game is in beta and may have bugs. Please report issues and share feedback via WhatsApp:
+                This game is in beta and may have bugs. Please report issues and share feedback via WhatsApp or{" "}
+                <a href="https://forms.gle/92bkA8SZUQJvXPak6" target="_blank" rel="noopener noreferrer" className="text-accent-red font-bold hover:underline">Link</a>
               </p>
               <a
                 href="https://wa.me/971509524814"
@@ -92,7 +93,7 @@ export default function Home() {
                 <p>
                   {theme.mode === "dhurandhar" ? (
                     <>
-                      Set in the streets of Lyari, this social deduction game pits <strong>India&apos;s agents</strong> against
+                      Inspired by the film Dhurandhar, this social deduction game pits <strong>India&apos;s agents</strong> against
                       hidden <strong>ISI operatives</strong>. Inspired by the movie <strong>Dhurandhar</strong>.
                     </>
                   ) : (

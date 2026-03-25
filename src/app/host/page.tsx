@@ -418,7 +418,8 @@ export default function HostPage() {
         {gameState.phase === "LOBBY" && (
           <motion.div key="lobby" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10 w-full max-w-2xl text-center">
             <h2 className="text-3xl font-black uppercase tracking-wider mb-1">
-              <span className="text-accent-red">{theme.brand.first}</span>{theme.brand.second}
+              <span className={theme.brand.accentSecond ? "text-white" : "text-accent-red"}>{theme.brand.first}</span>
+              <span className={theme.brand.accentSecond ? "text-accent-red" : "text-white"}>{theme.brand.second}</span>
             </h2>
             <p className="text-muted text-sm uppercase tracking-[0.3em] mb-2">Room Code</p>
             <h2 className="text-6xl font-black tracking-[0.15em] text-white mb-4">{roomCode}</h2>
