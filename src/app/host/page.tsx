@@ -243,7 +243,9 @@ export default function HostPage() {
         // Track classic games and show Dhurandhar promo
         if (mode === "classic") {
           incrementClassicGames();
-          setTimeout(() => setShowPostGamePromo(true), 3000);
+          if (!localStorage.getItem("citysleeps-postgame-promo-dismissed")) {
+            setTimeout(() => setShowPostGamePromo(true), 3000);
+          }
         }
         break;
     }
@@ -476,7 +478,10 @@ export default function HostPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
-            onClick={() => setShowPostGamePromo(false)}
+            onClick={() => {
+              setShowPostGamePromo(false);
+              localStorage.setItem("citysleeps-postgame-promo-dismissed", "1");
+            }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -507,7 +512,10 @@ export default function HostPage() {
                   Try Dhurandhar Mode
                 </button>
                 <button
-                  onClick={() => setShowPostGamePromo(false)}
+                  onClick={() => {
+                    setShowPostGamePromo(false);
+                    localStorage.setItem("citysleeps-postgame-promo-dismissed", "1");
+                  }}
                   className="w-full py-2.5 text-muted text-xs uppercase tracking-wider hover:text-white/60 transition-colors"
                 >
                   Continue Classic
