@@ -16,6 +16,12 @@ import {
 } from "@/lib/supabase";
 import { generateRoomCode } from "@/lib/utils";
 import {
+  trackSessionOpened,
+  trackSessionStarted,
+  trackSessionCompleted,
+  resetSessionId,
+} from "@/lib/sessionTracker";
+import {
   speak,
   stopSpeech,
   playNightChime,
@@ -148,6 +154,9 @@ export default function HostPage() {
 
     channelsRef.current = [publicCh, hostCh];
     setGameState(engine.getGameState());
+
+    // Track session opened
+    trackSessionOpened(code, mode).catch(console.error);
   }, []);
 
   // Auto-create room on mount
@@ -240,7 +249,8 @@ export default function HostPage() {
         }, 800);
         // Save game result to database
         if (engineRef.current && roomCode) {
-          saveGameResult(engineRef.current, roomCode).catch(console.error);
+          saveGameResult(engineRef.current, roomCode, mode).catch(console.error);
+          trackSessionCompleted(gameState.players.length).catch(console.error);
         }
         // Track classic games and show Dhurandhar promo
         if (mode === "classic") {
@@ -293,6 +303,9 @@ export default function HostPage() {
       setVoiceType(voiceChoice);
       engineRef.current?.startGame();
       setError(null);
+      // Track session started
+      const playerCount = engineRef.current?.getGameState().players.length ?? 0;
+      trackSessionStarted(playerCount, mode).catch(console.error);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to start");
     }
@@ -328,7 +341,10 @@ export default function HostPage() {
     setTimer(null);
     setError(null);
     setShowPostGamePromo(false);
+    resetSessionId();
     engineRef.current?.resetToLobby();
+    // Track new session for the replay
+    if (roomCode) trackSessionOpened(roomCode, mode).catch(console.error);
   };
 
   const handleNewGame = () => {

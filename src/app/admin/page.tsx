@@ -17,6 +17,17 @@ interface DashboardStats {
   avg_rating: number | null;
   avg_players_per_game: number | null;
   mafia_win_rate: number | null;
+  classic_games: number;
+  dhurandhar_games: number;
+  total_sessions: number;
+  sessions_opened_only: number;
+  sessions_started: number;
+  sessions_completed: number;
+  sessions_abandoned: number;
+  sessions_7d: number;
+  sessions_opened_only_7d: number;
+  sessions_started_7d: number;
+  sessions_completed_7d: number;
 }
 
 interface RecentGame {
@@ -25,7 +36,22 @@ interface RecentGame {
   winner: string;
   total_rounds: number;
   player_count: number;
+  game_mode: string;
   created_at: string;
+}
+
+interface GameSession {
+  id: string;
+  room_code: string;
+  game_mode: string;
+  status: string;
+  player_count: number;
+  timezone: string | null;
+  country: string | null;
+  city: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
 }
 
 interface TopPlayer {
@@ -39,13 +65,13 @@ interface TopPlayer {
 export default function AdminPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentGames, setRecentGames] = useState<RecentGame[]>([]);
+  const [sessions, setSessions] = useState<GameSession[]>([]);
   const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
 
-  // Simple password auth for admin (can be upgraded to Supabase Auth later)
   const ADMIN_PASSWORD = "citysleeps2024";
 
   const handleLogin = () => {
@@ -74,6 +100,7 @@ export default function AdminPage() {
         // Fallback: fetch manually
         const { count: totalUsers } = await sb.from("profiles").select("*", { count: "exact", head: true });
         const { count: totalGames } = await sb.from("games").select("*", { count: "exact", head: true });
+        const { count: totalSessions } = await sb.from("game_sessions").select("*", { count: "exact", head: true });
         setStats({
           total_users: totalUsers ?? 0,
           new_users_7d: 0,
@@ -86,6 +113,17 @@ export default function AdminPage() {
           avg_rating: null,
           avg_players_per_game: null,
           mafia_win_rate: null,
+          classic_games: 0,
+          dhurandhar_games: 0,
+          total_sessions: totalSessions ?? 0,
+          sessions_opened_only: 0,
+          sessions_started: 0,
+          sessions_completed: 0,
+          sessions_abandoned: 0,
+          sessions_7d: 0,
+          sessions_opened_only_7d: 0,
+          sessions_started_7d: 0,
+          sessions_completed_7d: 0,
         });
       } else {
         setStats(statsData as DashboardStats);
@@ -96,8 +134,16 @@ export default function AdminPage() {
         .from("games")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(30);
       setRecentGames(games ?? []);
+
+      // Fetch recent sessions
+      const { data: sessionsData } = await sb
+        .from("game_sessions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setSessions(sessionsData ?? []);
 
       // Fetch top players
       const { data: players } = await sb
@@ -151,13 +197,13 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-dvh px-6 py-10 max-w-6xl mx-auto">
+    <main className="min-h-dvh px-6 py-10 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-10">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-wider">
             <span className="text-accent-red">City</span>Sleeps Admin
           </h1>
-          <p className="text-muted text-xs uppercase tracking-widest mt-1">Dashboard</p>
+          <p className="text-muted text-xs uppercase tracking-widest mt-1">Analytics Dashboard</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -185,31 +231,126 @@ export default function AdminPage() {
         </div>
       ) : (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          {/* Stats Grid */}
+
+          {/* ─── Session Funnel ─────────────────────────── */}
           {stats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
-              <StatCard label="Total Users" value={stats.total_users} />
-              <StatCard label="New Users (7d)" value={stats.new_users_7d} />
-              <StatCard label="New Users (30d)" value={stats.new_users_30d} />
-              <StatCard label="Active Users (7d)" value={stats.active_users_7d} />
-              <StatCard label="Total Games" value={stats.total_games} />
-              <StatCard label="Games (7d)" value={stats.games_7d} />
-              <StatCard label="Games (30d)" value={stats.games_30d} />
-              <StatCard label="Active Users (30d)" value={stats.active_users_30d} />
-              <StatCard label="Avg Rating" value={stats.avg_rating ?? "—"} />
-              <StatCard label="Avg Players/Game" value={stats.avg_players_per_game ?? "—"} />
-              <StatCard label="Mafia Win Rate" value={stats.mafia_win_rate !== null ? `${stats.mafia_win_rate}%` : "—"} />
-              <StatCard label="City Win Rate" value={stats.mafia_win_rate !== null ? `${(100 - stats.mafia_win_rate).toFixed(1)}%` : "—"} />
-            </div>
+            <>
+              <SectionHeader title="Session Funnel" subtitle="How users progress through the game" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <StatCard label="Total Sessions" value={stats.total_sessions} />
+                <StatCard label="Opened Only" value={stats.sessions_opened_only} accent="yellow" />
+                <StatCard label="Started (not finished)" value={stats.sessions_abandoned} accent="orange" />
+                <StatCard label="Completed" value={stats.sessions_completed} accent="green" />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+                <StatCard label="Sessions (7d)" value={stats.sessions_7d} />
+                <StatCard label="Opened Only (7d)" value={stats.sessions_opened_only_7d} accent="yellow" />
+                <StatCard label="Started (7d)" value={stats.sessions_started_7d} />
+                <StatCard label="Completed (7d)" value={stats.sessions_completed_7d} accent="green" />
+              </div>
+
+              {/* ─── Funnel Bar ───────────────────────────── */}
+              {stats.total_sessions > 0 && (
+                <div className="bg-bg-card border border-white/5 rounded-lg p-5 mb-10">
+                  <p className="text-[10px] text-muted uppercase tracking-widest mb-3">Conversion Funnel</p>
+                  <div className="space-y-2">
+                    <FunnelBar label="Opened" value={stats.total_sessions} max={stats.total_sessions} color="bg-white/20" />
+                    <FunnelBar label="Started Game" value={stats.sessions_started} max={stats.total_sessions} color="bg-amber-500" />
+                    <FunnelBar label="Completed Game" value={stats.sessions_completed} max={stats.total_sessions} color="bg-green-500" />
+                  </div>
+                  <div className="flex gap-6 mt-3 text-[10px] text-muted">
+                    <span>Start Rate: <strong className="text-white">{stats.total_sessions > 0 ? ((stats.sessions_started / stats.total_sessions) * 100).toFixed(1) : 0}%</strong></span>
+                    <span>Completion Rate: <strong className="text-white">{stats.sessions_started > 0 ? ((stats.sessions_completed / stats.sessions_started) * 100).toFixed(1) : 0}%</strong></span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Top Players */}
+          {/* ─── Game Mode Split ───────────────────────── */}
+          {stats && (
+            <>
+              <SectionHeader title="Game Mode" subtitle="Classic vs Dhurandhar" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+                <StatCard label="Classic Games" value={stats.classic_games} />
+                <StatCard label="Dhurandhar Games" value={stats.dhurandhar_games} accent="orange" />
+                <StatCard label="Classic %" value={stats.total_games > 0 ? `${((stats.classic_games / stats.total_games) * 100).toFixed(1)}%` : "—"} />
+                <StatCard label="Dhurandhar %" value={stats.total_games > 0 ? `${((stats.dhurandhar_games / stats.total_games) * 100).toFixed(1)}%` : "—"} accent="orange" />
+              </div>
+            </>
+          )}
+
+          {/* ─── Overview Stats ────────────────────────── */}
+          {stats && (
+            <>
+              <SectionHeader title="Overview" subtitle="Users and games" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+                <StatCard label="Total Users" value={stats.total_users} />
+                <StatCard label="New Users (7d)" value={stats.new_users_7d} />
+                <StatCard label="Total Games" value={stats.total_games} />
+                <StatCard label="Games (7d)" value={stats.games_7d} />
+                <StatCard label="Active Users (7d)" value={stats.active_users_7d} />
+                <StatCard label="Active Users (30d)" value={stats.active_users_30d} />
+                <StatCard label="Avg Players/Game" value={stats.avg_players_per_game ?? "—"} />
+                <StatCard label="Avg Rating" value={stats.avg_rating ?? "—"} />
+                <StatCard label="Mafia Win Rate" value={stats.mafia_win_rate !== null ? `${stats.mafia_win_rate}%` : "—"} accent="red" />
+                <StatCard label="City Win Rate" value={stats.mafia_win_rate !== null ? `${(100 - stats.mafia_win_rate).toFixed(1)}%` : "—"} accent="green" />
+              </div>
+            </>
+          )}
+
+          {/* ─── Location & Sessions Table ──────────────── */}
+          <div className="grid md:grid-cols-2 gap-8 mb-10">
             <div>
-              <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white mb-4 flex items-center gap-2">
-                <div className="w-4 h-px bg-accent-red" />
-                Top Players
-              </h2>
+              <SectionHeader title="Recent Sessions" subtitle="Where & when games are played" />
+              <div className="bg-bg-card border border-white/5 rounded-lg overflow-hidden">
+                {sessions.length === 0 ? (
+                  <p className="text-muted text-xs p-6 text-center">No sessions recorded yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-white/5 text-muted uppercase tracking-wider">
+                          <th className="text-left p-3">Room</th>
+                          <th className="text-center p-3">Mode</th>
+                          <th className="text-center p-3">Status</th>
+                          <th className="text-center p-3">Players</th>
+                          <th className="text-left p-3">Location</th>
+                          <th className="text-right p-3">When</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sessions.map((s) => (
+                          <tr key={s.id} className="border-b border-white/[0.03]">
+                            <td className="p-3 font-mono text-white">{s.room_code || "—"}</td>
+                            <td className="p-3 text-center">
+                              <span className={s.game_mode === "dhurandhar" ? "text-[#FF9933] font-bold" : "text-muted-light"}>
+                                {s.game_mode === "dhurandhar" ? "DHR" : "Classic"}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <StatusBadge status={s.status} />
+                            </td>
+                            <td className="p-3 text-center text-muted-light">{s.player_count || "—"}</td>
+                            <td className="p-3 text-left text-muted-light">
+                              {s.city ? `${s.city}` : s.timezone || "—"}
+                            </td>
+                            <td className="p-3 text-right text-muted">
+                              <div>{formatDate(s.created_at)}</div>
+                              <div className="text-[10px]">{formatTime(s.created_at)}</div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ─── Top Players ──────────────────────────── */}
+            <div>
+              <SectionHeader title="Top Players" subtitle="By rating" />
               <div className="bg-bg-card border border-white/5 rounded-lg overflow-hidden">
                 {topPlayers.length === 0 ? (
                   <p className="text-muted text-xs p-6 text-center">No games played yet</p>
@@ -237,69 +378,170 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
-
-            {/* Recent Games */}
-            <div>
-              <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white mb-4 flex items-center gap-2">
-                <div className="w-4 h-px bg-accent-red" />
-                Recent Games
-              </h2>
-              <div className="bg-bg-card border border-white/5 rounded-lg overflow-hidden">
-                {recentGames.length === 0 ? (
-                  <p className="text-muted text-xs p-6 text-center">No games recorded yet</p>
-                ) : (
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-white/5 text-muted uppercase tracking-wider">
-                        <th className="text-left p-3">Room</th>
-                        <th className="text-center p-3">Winner</th>
-                        <th className="text-center p-3">Rounds</th>
-                        <th className="text-center p-3">Players</th>
-                        <th className="text-right p-3">When</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentGames.map((g) => (
-                        <tr key={g.id} className="border-b border-white/[0.03]">
-                          <td className="p-3 font-mono text-white">{g.room_code}</td>
-                          <td className="p-3 text-center">
-                            <span className={g.winner === "MAFIA" ? "text-accent-red font-bold" : "text-green-500 font-bold"}>
-                              {g.winner === "MAFIA" ? "Mafia" : "City"}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center text-muted-light">{g.total_rounds}</td>
-                          <td className="p-3 text-center text-muted-light">{g.player_count}</td>
-                          <td className="p-3 text-right text-muted">{formatTimeAgo(g.created_at)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
           </div>
+
+          {/* ─── Recent Games ──────────────────────────── */}
+          <SectionHeader title="Recent Games" subtitle="Completed games with results" />
+          <div className="bg-bg-card border border-white/5 rounded-lg overflow-hidden mb-10">
+            {recentGames.length === 0 ? (
+              <p className="text-muted text-xs p-6 text-center">No games recorded yet</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-muted uppercase tracking-wider">
+                      <th className="text-left p-3">Room</th>
+                      <th className="text-center p-3">Mode</th>
+                      <th className="text-center p-3">Winner</th>
+                      <th className="text-center p-3">Rounds</th>
+                      <th className="text-center p-3">Players</th>
+                      <th className="text-right p-3">Date</th>
+                      <th className="text-right p-3">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentGames.map((g) => (
+                      <tr key={g.id} className="border-b border-white/[0.03]">
+                        <td className="p-3 font-mono text-white">{g.room_code}</td>
+                        <td className="p-3 text-center">
+                          <span className={g.game_mode === "dhurandhar" ? "text-[#FF9933] font-bold" : "text-muted-light"}>
+                            {g.game_mode === "dhurandhar" ? "DHR" : "Classic"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={g.winner === "MAFIA" ? "text-accent-red font-bold" : "text-green-500 font-bold"}>
+                            {g.winner === "MAFIA" ? "Mafia" : "City"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center text-muted-light">{g.total_rounds}</td>
+                        <td className="p-3 text-center text-muted-light">{g.player_count}</td>
+                        <td className="p-3 text-right text-muted">{formatDate(g.created_at)}</td>
+                        <td className="p-3 text-right text-muted">{formatTime(g.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ─── Location Breakdown ─────────────────────── */}
+          <SectionHeader title="Locations" subtitle="Where games are being played (by timezone)" />
+          <div className="bg-bg-card border border-white/5 rounded-lg overflow-hidden mb-10">
+            <LocationBreakdown sessions={sessions} />
+          </div>
+
         </motion.div>
       )}
     </main>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="bg-bg-card border border-white/5 rounded-lg p-4">
-      <p className="text-muted text-[10px] uppercase tracking-widest mb-1">{label}</p>
-      <p className="text-white text-xl font-black">{value}</p>
+    <div className="mb-4">
+      <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white flex items-center gap-2">
+        <div className="w-4 h-px bg-accent-red" />
+        {title}
+      </h2>
+      <p className="text-muted text-[10px] uppercase tracking-widest mt-1 pl-7">{subtitle}</p>
     </div>
   );
 }
 
-function formatTimeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "now";
-  if (mins < 60) return `${mins}m`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
+function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
+  const colorMap: Record<string, string> = {
+    red: "text-accent-red",
+    green: "text-green-500",
+    orange: "text-[#FF9933]",
+    yellow: "text-amber-400",
+  };
+  const textColor = accent ? colorMap[accent] || "text-white" : "text-white";
+  return (
+    <div className="bg-bg-card border border-white/5 rounded-lg p-4">
+      <p className="text-muted text-[10px] uppercase tracking-widest mb-1">{label}</p>
+      <p className={`${textColor} text-xl font-black`}>{value}</p>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { bg: string; text: string; label: string }> = {
+    opened: { bg: "bg-amber-500/15", text: "text-amber-400", label: "Opened" },
+    started: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Started" },
+    completed: { bg: "bg-green-500/15", text: "text-green-400", label: "Completed" },
+  };
+  const c = config[status] || config.opened;
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${c.bg} ${c.text}`}>
+      {c.label}
+    </span>
+  );
+}
+
+function FunnelBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const pct = max > 0 ? (value / max) * 100 : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-[10px] text-muted uppercase tracking-wider w-28 shrink-0">{label}</span>
+      <div className="flex-1 h-5 bg-white/5 rounded overflow-hidden">
+        <div className={`h-full ${color} rounded transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs text-white font-bold w-12 text-right">{value}</span>
+      <span className="text-[10px] text-muted w-12 text-right">{pct.toFixed(1)}%</span>
+    </div>
+  );
+}
+
+function LocationBreakdown({ sessions }: { sessions: GameSession[] }) {
+  // Group sessions by city/timezone
+  const locationMap: Record<string, { count: number; completed: number; modes: Record<string, number> }> = {};
+  for (const s of sessions) {
+    const key = s.city || s.timezone || "Unknown";
+    if (!locationMap[key]) locationMap[key] = { count: 0, completed: 0, modes: {} };
+    locationMap[key].count++;
+    if (s.status === "completed") locationMap[key].completed++;
+    locationMap[key].modes[s.game_mode] = (locationMap[key].modes[s.game_mode] || 0) + 1;
+  }
+
+  const sorted = Object.entries(locationMap).sort((a, b) => b[1].count - a[1].count);
+
+  if (sorted.length === 0) {
+    return <p className="text-muted text-xs p-6 text-center">No location data yet</p>;
+  }
+
+  return (
+    <table className="w-full text-xs">
+      <thead>
+        <tr className="border-b border-white/5 text-muted uppercase tracking-wider">
+          <th className="text-left p-3">Location</th>
+          <th className="text-center p-3">Sessions</th>
+          <th className="text-center p-3">Completed</th>
+          <th className="text-center p-3">Classic</th>
+          <th className="text-center p-3">Dhurandhar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map(([loc, data]) => (
+          <tr key={loc} className="border-b border-white/[0.03]">
+            <td className="p-3 text-white font-medium">{loc}</td>
+            <td className="p-3 text-center text-muted-light">{data.count}</td>
+            <td className="p-3 text-center text-green-500 font-bold">{data.completed}</td>
+            <td className="p-3 text-center text-muted-light">{data.modes["classic"] || 0}</td>
+            <td className="p-3 text-center text-[#FF9933] font-bold">{data.modes["dhurandhar"] || 0}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
 }

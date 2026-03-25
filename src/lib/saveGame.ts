@@ -1,9 +1,11 @@
 import { getSupabase } from "./supabase";
 import type { GameEngine } from "@/engine/GameEngine";
+import type { GameMode } from "./gameTheme";
 
 export async function saveGameResult(
   engine: GameEngine,
-  roomCode: string
+  roomCode: string,
+  gameMode: GameMode = "classic"
 ): Promise<{ success: boolean; error?: string }> {
   const result = engine.getGameResult();
   if (!result) return { success: false, error: "Game not over" };
@@ -25,6 +27,7 @@ export async function saveGameResult(
         winner: result.winner,
         total_rounds: result.totalRounds,
         player_count: result.players.length,
+        game_mode: gameMode,
       });
 
     if (gameError) {
