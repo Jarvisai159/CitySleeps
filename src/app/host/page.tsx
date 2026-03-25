@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { GameEngine } from "@/engine/GameEngine";
-import { GameState, PublicPlayer, ROLE_INFO } from "@/engine/types";
+import { GameState, PublicPlayer } from "@/engine/types";
+import { useGameTheme } from "@/lib/ThemeProvider";
+import { ModeToggle } from "@/components/ModeToggle";
 import { saveGameResult } from "@/lib/saveGame";
 import {
   getSupabase,
@@ -33,6 +35,9 @@ const SPEED_SETTINGS: Record<GameSpeed, { discussion: number; voting: number; la
 };
 
 export default function HostPage() {
+  const { theme } = useGameTheme();
+  const r = theme.roles;
+
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [timer, setTimer] = useState<number | null>(null);
@@ -44,6 +49,8 @@ export default function HostPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelsRef = useRef<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const playerChannelsRef = useRef<Map<string, any>>(new Map());
 
   // Create room
   const createRoom = useCallback(() => {
@@ -52,26 +59,33 @@ export default function HostPage() {
 
     const sb = getSupabase();
 
+    // Subscribe to public channel FIRST, then use it for broadcasting
+    const publicCh = sb.channel(getPublicChannel(code)).subscribe();
+
     const engine = new GameEngine(
       (state) => {
         setGameState(state);
-        sb.channel(getPublicChannel(code)).send({
+        publicCh.send({
           type: "broadcast",
           event: "game-state",
           payload: state,
         });
       },
       (playerId, msg) => {
-        sb.channel(getPlayerChannel(code, playerId)).send({
-          type: "broadcast",
-          event: "private-msg",
-          payload: msg,
-        });
+        // Use pre-subscribed player channel
+        const pCh = playerChannelsRef.current.get(playerId);
+        if (pCh) {
+          pCh.send({
+            type: "broadcast",
+            event: "private-msg",
+            payload: msg,
+          });
+        } else {
+          console.warn("No channel for player", playerId);
+        }
       }
     );
     engineRef.current = engine;
-
-    const publicCh = sb.channel(getPublicChannel(code)).subscribe();
 
     const hostCh = sb
       .channel(getHostChannel(code))
@@ -87,7 +101,26 @@ export default function HostPage() {
 
         try {
           if (action.type === "join" && action.playerName) {
-            eng.addPlayer(action.playerId, action.playerName);
+            // Subscribe to player's private channel BEFORE adding them
+            if (!playerChannelsRef.current.has(action.playerId)) {
+              const pCh = sb
+                .channel(getPlayerChannel(code, action.playerId))
+                .subscribe((status) => {
+                  if (status === "SUBSCRIBED") {
+                    // Now safe to add the player (which broadcasts state)
+                    try {
+                      eng.addPlayer(action.playerId, action.playerName!);
+                    } catch (err: unknown) {
+                      console.error("Add player error:", err);
+                    }
+                  }
+                });
+              playerChannelsRef.current.set(action.playerId, pCh);
+              channelsRef.current.push(pCh);
+            } else {
+              // Channel already exists — player reconnecting
+              eng.addPlayer(action.playerId, action.playerName);
+            }
           } else if (action.type === "night-action" && action.targetId) {
             eng.submitNightAction(action.playerId, action.targetId);
           } else if (action.type === "vote" && action.targetId) {
@@ -119,11 +152,12 @@ export default function HostPage() {
       } catch {
         // not initialized
       }
+      playerChannelsRef.current.clear();
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
-  // ─── Voice narration on phase changes ─────────────────
+  // ─── Voice narration on phase changes (uses theme) ─────
   const prevPhaseRef = useRef<string | null>(null);
   useEffect(() => {
     if (!gameState) return;
@@ -132,58 +166,50 @@ export default function HostPage() {
     prevPhaseRef.current = curr;
     if (prev === curr) return;
 
+    const n = theme.narration;
+
     switch (curr) {
       case "ROLE_REVEAL":
-        speak("Roles have been assigned. Check your phones now. Do not show anyone.");
+        speak(n.roleReveal);
         break;
       case "NIGHT_MAFIA":
         playNightChime();
         setTimeout(() => {
-          speak(
-            gameState.round === 1
-              ? "Night falls over the town. Everyone, close your eyes. Mafia, open your eyes. Spy, open your eyes. You may see each other, but only Mafia may choose a target."
-              : "Night falls. Everyone, close your eyes. Mafia and Spy, open your eyes. Mafia, choose your target."
-          );
+          speak(gameState.round === 1 ? n.nightFirst : n.nightRepeat);
         }, 800);
         break;
       case "NIGHT_HEALER":
-        speak("Mafia and Spy, close your eyes. Healer, open your eyes. Choose someone to protect.");
+        speak(n.healerPrompt);
         break;
       case "NIGHT_DETECTIVE":
-        speak("Healer, close your eyes. Detective, open your eyes. Choose someone to investigate.");
+        speak(n.detectivePrompt);
         break;
       case "DAWN":
         playDawnChime();
         setTimeout(() => {
-          const closeEyes = "Close your eyes.";
           if (gameState.nightResult?.killed) {
-            speak(
-              `${closeEyes} Everyone, open your eyes. The sun rises. Last night, ${gameState.nightResult.killedPlayerName} was killed by the Mafia.`
-            );
+            speak(n.dawnKilled(gameState.nightResult.killedPlayerName!));
           } else if (gameState.nightResult?.savedByHealer) {
-            speak(
-              `${closeEyes} Everyone, open your eyes. The sun rises. No one died last night. The Healer made a crucial save.`
-            );
+            speak(n.dawnSaved);
           } else {
-            speak(
-              `${closeEyes} Everyone, open your eyes. The sun rises. It was a peaceful night.`
-            );
+            speak(n.dawnPeaceful);
           }
         }, 800);
         break;
       case "DAY_DISCUSSION":
-        speak("Discussion begins now. Talk amongst yourselves. Who do you suspect?");
+        speak(n.discussion);
         break;
       case "DAY_VOTING":
-        speak("Time to vote. Use your phones to cast your vote now.");
+        speak(n.vote);
         break;
       case "ELIMINATION":
         playEliminationSound();
         setTimeout(() => {
           if (gameState.voteResult?.eliminated) {
-            let msg = `The town has spoken. ${gameState.voteResult.eliminatedName} has been eliminated. They were ${ROLE_INFO[gameState.voteResult.eliminatedRole!]?.name}.`;
+            const roleName = r[gameState.voteResult.eliminatedRole!]?.name ?? "Unknown";
+            let msg = n.eliminated(gameState.voteResult.eliminatedName!, roleName);
             if (gameState.voteResult.terroristVictimName) {
-              msg += ` But the Terrorist's final act takes ${gameState.voteResult.terroristVictimName} down as well!`;
+              msg += " " + n.terroristRevenge(gameState.voteResult.terroristVictimName);
             }
             speak(msg);
           } else if (gameState.voteResult?.isTie) {
@@ -197,9 +223,7 @@ export default function HostPage() {
         playVictorySound();
         setTimeout(() => {
           speak(
-            gameState.winner === "CITY"
-              ? "Game over. The Civilians win! All Mafia members have been eliminated."
-              : "Game over. The Mafia wins! They have taken over the city."
+            gameState.winner === "CITY" ? n.gameOverGood : n.gameOverEvil
           );
         }, 800);
         // Save game result to database
@@ -294,6 +318,7 @@ export default function HostPage() {
     } catch { /* */ }
     if (timerRef.current) clearInterval(timerRef.current);
     channelsRef.current = [];
+    playerChannelsRef.current.clear();
     engineRef.current = null;
     setGameState(null);
     setTimer(null);
@@ -340,7 +365,7 @@ export default function HostPage() {
   const joinUrl = typeof window !== "undefined" ? `${window.location.origin}/play?code=${roomCode}` : "";
   const aliveCount = gameState.players.filter((p) => p.isAlive).length;
 
-  const shareText = `Join my CitySleeps game! Enter code ${roomCode} or click: ${joinUrl}`;
+  const shareText = theme.shareText(roomCode, joinUrl);
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
   const handleCopyLink = () => {
@@ -350,7 +375,7 @@ export default function HostPage() {
   const handleShare = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: "CitySleeps", text: shareText, url: joinUrl });
+        await navigator.share({ title: `${theme.brand.first}${theme.brand.second}`, text: shareText, url: joinUrl });
       } catch { /* cancelled */ }
     } else {
       window.open(whatsappUrl, "_blank");
@@ -370,6 +395,13 @@ export default function HostPage() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-accent-darkred/5 blur-[150px] rounded-full" />
       </div>
 
+      {/* Mode toggle - top left */}
+      {gameState.phase === "LOBBY" && (
+        <div className="fixed top-4 left-4 z-50">
+          <ModeToggle />
+        </div>
+      )}
+
       {/* ─── Persistent QR sidebar (visible during game, not lobby) ─── */}
       {gameState.phase !== "LOBBY" && (
         <div className="fixed top-4 right-4 z-50 bg-bg-card/90 backdrop-blur border border-white/10 rounded-xl p-3 flex flex-col items-center gap-2 shadow-lg">
@@ -386,7 +418,7 @@ export default function HostPage() {
         {gameState.phase === "LOBBY" && (
           <motion.div key="lobby" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10 w-full max-w-2xl text-center">
             <h2 className="text-3xl font-black uppercase tracking-wider mb-1">
-              <span className="text-accent-red">City</span>Sleeps
+              <span className="text-accent-red">{theme.brand.first}</span>{theme.brand.second}
             </h2>
             <p className="text-muted text-sm uppercase tracking-[0.3em] mb-2">Room Code</p>
             <h2 className="text-6xl font-black tracking-[0.15em] text-white mb-4">{roomCode}</h2>
@@ -543,9 +575,9 @@ export default function HostPage() {
               animate={{ opacity: 1 }}
               className="text-muted-light text-sm mb-10"
             >
-              {gameState.phase === "NIGHT_MAFIA" && "The Mafia is choosing a target... The Spy is watching."}
-              {gameState.phase === "NIGHT_HEALER" && "The Healer is choosing who to save..."}
-              {gameState.phase === "NIGHT_DETECTIVE" && "The Detective is investigating..."}
+              {gameState.phase === "NIGHT_MAFIA" && `${r.MAFIA.name} is choosing a target... ${r.SPY.name} is watching.`}
+              {gameState.phase === "NIGHT_HEALER" && `${r.HEALER.name} is choosing who to save...`}
+              {gameState.phase === "NIGHT_DETECTIVE" && `${r.DETECTIVE.name} is investigating...`}
             </motion.p>
             <button onClick={handleForceResolve} className="py-2.5 px-8 bg-bg-elevated hover:bg-bg-hover text-muted-light text-xs uppercase tracking-widest rounded-lg transition-colors border border-white/5">
               Force Advance
@@ -565,12 +597,12 @@ export default function HostPage() {
                   <p className="text-accent-red text-xl font-bold uppercase tracking-wide mb-1">
                     {gameState.nightResult.killedPlayerName}
                   </p>
-                  <p className="text-muted-light text-sm">was killed by the Mafia</p>
+                  <p className="text-muted-light text-sm">was eliminated by {r.MAFIA.name}</p>
                 </div>
               ) : gameState.nightResult?.savedByHealer ? (
                 <div className="bg-bg-card border border-green-700/30 rounded-lg p-6 max-w-sm mx-auto mb-8">
                   <p className="text-green-500 text-xl font-bold uppercase tracking-wide mb-1">No One Died</p>
-                  <p className="text-muted-light text-sm">The Healer made a save</p>
+                  <p className="text-muted-light text-sm">{r.HEALER.name} made a save</p>
                 </div>
               ) : (
                 <div className="bg-bg-card border border-white/10 rounded-lg p-6 max-w-sm mx-auto mb-8">
@@ -592,7 +624,7 @@ export default function HostPage() {
         {gameState.phase === "DAY_DISCUSSION" && (
           <motion.div key="discussion" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10 text-center w-full max-w-md">
             <h2 className="text-3xl font-black uppercase tracking-wider mb-2">Discussion</h2>
-            <p className="text-muted text-sm mb-6">Debate who might be Mafia</p>
+            <p className="text-muted text-sm mb-6">Debate who might be {r.MAFIA.name}</p>
 
             {timer !== null && (
               <div className="text-5xl font-black tabular-nums text-white/90 mb-6">
@@ -663,14 +695,14 @@ export default function HostPage() {
                   <p className="text-white text-2xl font-black uppercase tracking-wide mb-1">
                     {gameState.voteResult.eliminatedName}
                   </p>
-                  <p className="text-sm font-bold uppercase tracking-wider" style={{ color: ROLE_INFO[gameState.voteResult.eliminatedRole!]?.color }}>
-                    {ROLE_INFO[gameState.voteResult.eliminatedRole!]?.name}
+                  <p className="text-sm font-bold uppercase tracking-wider" style={{ color: r[gameState.voteResult.eliminatedRole!]?.color }}>
+                    {r[gameState.voteResult.eliminatedRole!]?.name}
                   </p>
                 </div>
                 {gameState.voteResult.terroristVictimName && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 }}
                     className="bg-bg-card border border-orange-500/30 rounded-lg p-5 max-w-sm mx-auto mt-4">
-                    <p className="text-orange-400 text-xs uppercase tracking-wider font-bold mb-1">Terrorist&apos;s Final Act</p>
+                    <p className="text-orange-400 text-xs uppercase tracking-wider font-bold mb-1">{r.TERRORIST.name}&apos;s Final Act</p>
                     <p className="text-white text-lg font-black uppercase">{gameState.voteResult.terroristVictimName}</p>
                     <p className="text-muted-light text-xs mt-1">was taken down as well</p>
                   </motion.div>
@@ -702,15 +734,13 @@ export default function HostPage() {
               <p className="text-muted text-xs uppercase tracking-[0.3em] mb-3">Game Over</p>
               <h2 className="text-4xl font-black uppercase tracking-wider mb-2">
                 {gameState.winner === "CITY" ? (
-                  <span className="text-white">Civilians Win</span>
+                  <span className="text-white">{theme.win.goodTitle}</span>
                 ) : (
-                  <span className="text-accent-red">Mafia Wins</span>
+                  <span className="text-accent-red">{theme.win.evilTitle}</span>
                 )}
               </h2>
               <p className="text-muted-light text-sm mb-10">
-                {gameState.winner === "CITY"
-                  ? "All Mafia members have been found and eliminated."
-                  : "The Mafia has taken over the city."}
+                {gameState.winner === "CITY" ? theme.win.goodDesc : theme.win.evilDesc}
               </p>
             </motion.div>
 
@@ -724,8 +754,8 @@ export default function HostPage() {
                       {p.name}
                     </span>
                     {role && (
-                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: ROLE_INFO[role].color }}>
-                        {ROLE_INFO[role].name}
+                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: r[role].color }}>
+                        {r[role].name}
                       </span>
                     )}
                   </div>

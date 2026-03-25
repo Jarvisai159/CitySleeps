@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { GameState, PrivateMessage, Role, ROLE_INFO } from "@/engine/types";
+import { GameState, PrivateMessage, Role } from "@/engine/types";
+import { useGameTheme } from "@/lib/ThemeProvider";
 import {
   getSupabase,
   getPublicChannel,
@@ -16,6 +17,8 @@ import { playVoteSound } from "@/lib/sounds";
 function PlayerPageInner() {
   const searchParams = useSearchParams();
   const codeFromUrl = searchParams.get("code") ?? "";
+  const { theme } = useGameTheme();
+  const r = theme.roles;
 
   const [screen, setScreen] = useState<"join" | "lobby" | "game">("join");
   const [roomCode, setRoomCode] = useState(codeFromUrl);
@@ -53,7 +56,6 @@ function PlayerPageInner() {
 
   const sendAction = useCallback(
     (action: Record<string, unknown>) => {
-      // Use the already-subscribed host channel (index 1 in channelsRef)
       const hostCh = channelsRef.current[1];
       if (!hostCh) return;
       hostCh.send({
@@ -69,7 +71,6 @@ function PlayerPageInner() {
     if (!gameState) return;
     const phase = gameState.phase;
     if (phase === "LOBBY") {
-      // Game was reset — go back to lobby, clear all game state
       setScreen("lobby");
       setMyRole(null);
       setMafiaTeam([]);
@@ -84,7 +85,7 @@ function PlayerPageInner() {
     if (phase.startsWith("NIGHT")) {
       setActionSubmitted(false);
       setActionPrompt(null);
-      setDetectiveResult(null);
+      // Don't clear detective result - it should persist for discussion
       setSpyIntel(null);
     }
     if (phase === "DAY_VOTING") setHasVoted(false);
@@ -114,10 +115,8 @@ function PlayerPageInner() {
       })
       .subscribe();
 
-    // Subscribe to host channel and wait for it to be ready before sending join
     const hostCh = sb.channel(getHostChannel(code)).subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        // Channel is ready — now send join action
         hostCh.send({
           type: "broadcast",
           event: "player-action",
@@ -139,6 +138,7 @@ function PlayerPageInner() {
           setActionSubmitted(false);
         } else if (msg.type === "detective-result" && msg.investigationResult) {
           setDetectiveResult(msg.investigationResult);
+          setActionSubmitted(true);
         } else if (msg.type === "spy-intel" && msg.spyIntel) {
           setSpyIntel(msg.spyIntel);
         } else if (msg.type === "action-confirmed") {
@@ -180,7 +180,7 @@ function PlayerPageInner() {
           <motion.div key="join" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full max-w-sm">
             <div className="w-12 h-px bg-accent-red mx-auto mb-8" />
             <h1 className="text-2xl font-black text-center uppercase tracking-wider mb-10">
-              <span className="text-accent-red">City</span>Sleeps
+              <span className="text-accent-red">{theme.brand.first}</span>{theme.brand.second}
             </h1>
 
             <div className="space-y-5 mb-8">
@@ -260,18 +260,18 @@ function PlayerPageInner() {
                     <motion.div initial={{ rotateY: 90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} transition={{ duration: 0.4 }}>
                       <div
                         className="w-52 mx-auto rounded-lg p-6 border-2"
-                        style={{ borderColor: ROLE_INFO[myRole].color, background: `${ROLE_INFO[myRole].color}10` }}
+                        style={{ borderColor: r[myRole].color, background: `${r[myRole].color}10` }}
                       >
                         <div
                           className="w-14 h-14 rounded-lg mx-auto mb-4 flex items-center justify-center text-2xl font-black"
-                          style={{ backgroundColor: `${ROLE_INFO[myRole].color}20`, color: ROLE_INFO[myRole].color }}
+                          style={{ backgroundColor: `${r[myRole].color}20`, color: r[myRole].color }}
                         >
-                          {ROLE_INFO[myRole].symbol}
+                          {r[myRole].symbol}
                         </div>
-                        <h3 className="text-xl font-black uppercase tracking-wider mb-2" style={{ color: ROLE_INFO[myRole].color }}>
-                          {ROLE_INFO[myRole].name}
+                        <h3 className="text-xl font-black uppercase tracking-wider mb-2" style={{ color: r[myRole].color }}>
+                          {r[myRole].name}
                         </h3>
-                        <p className="text-muted-light text-xs leading-relaxed">{ROLE_INFO[myRole].description}</p>
+                        <p className="text-muted-light text-xs leading-relaxed">{r[myRole].description}</p>
                         {mafiaTeam.length > 0 && (
                           <p className="text-accent-red/70 text-xs mt-3 pt-3 border-t border-white/5">
                             Allies: {mafiaTeam.join(", ")}
@@ -290,26 +290,37 @@ function PlayerPageInner() {
                   {!amAlive ? (
                     <DeadScreen />
                   ) : actionPrompt && !actionSubmitted ? (
-                    <NightActionUI prompt={actionPrompt} detectiveResult={detectiveResult} onSelect={handleNightAction} />
+                    <NightActionUI prompt={actionPrompt} detectiveResult={detectiveResult} onSelect={handleNightAction} theme={theme} />
                   ) : actionSubmitted ? (
                     <div>
                       <div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-6" />
                       <p className="text-muted-light text-sm">Action submitted. Waiting for others...</p>
+                      {detectiveResult && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 p-4 bg-blue-950/20 border border-blue-500/20 rounded-lg">
+                          <p className="text-blue-400 text-xs font-bold uppercase tracking-wider mb-1">Investigation Result</p>
+                          <p className="text-white text-sm">
+                            <strong>{detectiveResult.playerName}</strong> is{" "}
+                            <strong className={detectiveResult.isMafia ? "text-red-400" : "text-green-400"}>
+                              {detectiveResult.isMafia ? r.MAFIA.name.toUpperCase() : `NOT ${r.MAFIA.name}`}
+                            </strong>
+                          </p>
+                        </motion.div>
+                      )}
                     </div>
                   ) : myRole === "SPY" && gameState.phase === "NIGHT_MAFIA" ? (
                     <div>
                       <div
                         className="w-10 h-10 rounded-lg mx-auto mb-4 flex items-center justify-center text-lg font-black"
-                        style={{ backgroundColor: `${ROLE_INFO.SPY.color}20`, color: ROLE_INFO.SPY.color }}
+                        style={{ backgroundColor: `${r.SPY.color}20`, color: r.SPY.color }}
                       >
-                        S
+                        {r.SPY.symbol}
                       </div>
                       <p className="text-purple-400 text-sm font-bold uppercase tracking-widest mb-2">You are watching</p>
-                      <p className="text-muted text-xs">The Mafia is choosing their target...</p>
+                      <p className="text-muted text-xs">{r.MAFIA.name} is choosing their target...</p>
                       {spyIntel && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 p-4 bg-purple-950/20 border border-purple-500/20 rounded-lg">
                           <p className="text-purple-400 text-xs font-bold uppercase tracking-wider mb-1">Intel Received</p>
-                          <p className="text-white text-sm">Mafia targeted <strong>{spyIntel.mafiaTargetName}</strong></p>
+                          <p className="text-white text-sm">{r.MAFIA.name} targeted <strong>{spyIntel.mafiaTargetName}</strong></p>
                         </motion.div>
                       )}
                     </div>
@@ -331,7 +342,7 @@ function PlayerPageInner() {
                   {gameState.nightResult?.killed ? (
                     <p className="text-accent-red font-bold">{gameState.nightResult.killedPlayerName} was killed.</p>
                   ) : gameState.nightResult?.savedByHealer ? (
-                    <p className="text-green-500 font-bold">No one died — the Healer saved someone.</p>
+                    <p className="text-green-500 font-bold">No one died — {r.HEALER.name} saved someone.</p>
                   ) : (
                     <p className="text-muted-light">A peaceful night.</p>
                   )}
@@ -349,8 +360,8 @@ function PlayerPageInner() {
                       {myRole && (
                         <div className="mt-6 p-3 bg-bg-card border border-white/5 rounded-lg">
                           <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Your Role</p>
-                          <p className="text-sm font-bold uppercase tracking-wider" style={{ color: ROLE_INFO[myRole].color }}>
-                            {ROLE_INFO[myRole].name}
+                          <p className="text-sm font-bold uppercase tracking-wider" style={{ color: r[myRole].color }}>
+                            {r[myRole].name}
                           </p>
                         </div>
                       )}
@@ -358,14 +369,16 @@ function PlayerPageInner() {
                         <div className="mt-3 p-3 bg-blue-950/20 border border-blue-500/20 rounded-lg">
                           <p className="text-blue-400 text-xs">
                             Investigation: <strong>{detectiveResult.playerName}</strong> is{" "}
-                            <strong>{detectiveResult.isMafia ? "MAFIA" : "NOT Mafia"}</strong>
+                            <strong className={detectiveResult.isMafia ? "text-red-400" : "text-green-400"}>
+                              {detectiveResult.isMafia ? r.MAFIA.name.toUpperCase() : `NOT ${r.MAFIA.name}`}
+                            </strong>
                           </p>
                         </div>
                       )}
                       {spyIntel && (
                         <div className="mt-3 p-3 bg-purple-950/20 border border-purple-500/20 rounded-lg">
                           <p className="text-purple-400 text-xs">
-                            Intel: Mafia targeted <strong>{spyIntel.mafiaTargetName}</strong> last night
+                            Intel: {r.MAFIA.name} targeted <strong>{spyIntel.mafiaTargetName}</strong> last night
                           </p>
                         </div>
                       )}
@@ -417,8 +430,8 @@ function PlayerPageInner() {
                       <h3 className="text-xl font-black uppercase tracking-wider mb-2">
                         {gameState.voteResult.eliminatedName}
                       </h3>
-                      <p className="text-sm font-bold uppercase tracking-wider" style={{ color: ROLE_INFO[gameState.voteResult.eliminatedRole!]?.color }}>
-                        {ROLE_INFO[gameState.voteResult.eliminatedRole!]?.name}
+                      <p className="text-sm font-bold uppercase tracking-wider" style={{ color: r[gameState.voteResult.eliminatedRole!]?.color }}>
+                        {r[gameState.voteResult.eliminatedRole!]?.name}
                       </p>
                     </>
                   ) : (
@@ -437,11 +450,11 @@ function PlayerPageInner() {
                   <div className="w-16 h-px bg-accent-red mx-auto mb-6" />
                   <p className="text-muted text-xs uppercase tracking-[0.3em] mb-2">Game Over</p>
                   <h2 className="text-2xl font-black uppercase tracking-wider mb-2">
-                    {gameState.winner === "CITY" ? "Civilians Win" : <span className="text-accent-red">Mafia Wins</span>}
+                    {gameState.winner === "CITY" ? theme.win.goodTitle : <span className="text-accent-red">{theme.win.evilTitle}</span>}
                   </h2>
                   {myRole && (
                     <p className="text-muted-light text-sm mb-8">
-                      You were <span className="font-bold uppercase" style={{ color: ROLE_INFO[myRole].color }}>{ROLE_INFO[myRole].name}</span>
+                      You were <span className="font-bold uppercase" style={{ color: r[myRole].color }}>{r[myRole].name}</span>
                     </p>
                   )}
                   <div className="space-y-1.5">
@@ -453,8 +466,8 @@ function PlayerPageInner() {
                             {p.name}{p.id === playerId && <span className="text-muted text-xs ml-1">(you)</span>}
                           </span>
                           {role && (
-                            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: ROLE_INFO[role].color }}>
-                              {ROLE_INFO[role].name}
+                            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: r[role].color }}>
+                              {r[role].name}
                             </span>
                           )}
                         </div>
@@ -475,15 +488,18 @@ function NightActionUI({
   prompt,
   detectiveResult,
   onSelect,
+  theme,
 }: {
   prompt: PrivateMessage;
   detectiveResult: { playerName: string; isMafia: boolean } | null;
   onSelect: (targetId: string) => void;
+  theme: ReturnType<typeof import("@/lib/gameTheme").getTheme>;
 }) {
+  const r = theme.roles;
   const labels: Record<string, { title: string; symbol: string; color: string }> = {
-    "mafia-kill": { title: "Choose Target", symbol: "M", color: "#C41E3A" },
-    "healer-save": { title: "Choose Who to Save", symbol: "H", color: "#2D8B46" },
-    "detective-investigate": { title: "Investigate", symbol: "?", color: "#2563EB" },
+    "mafia-kill": { title: "Choose Target", symbol: r.MAFIA.symbol, color: r.MAFIA.color },
+    "healer-save": { title: "Choose Who to Save", symbol: r.HEALER.symbol, color: r.HEALER.color },
+    "detective-investigate": { title: "Investigate", symbol: r.DETECTIVE.symbol, color: r.DETECTIVE.color },
   };
   const info = labels[prompt.actionType!] ?? labels["mafia-kill"];
 
@@ -504,7 +520,9 @@ function NightActionUI({
         <div className="mb-4 p-3 bg-blue-950/20 border border-blue-500/20 rounded-lg">
           <p className="text-blue-400 text-xs">
             Previous: <strong>{detectiveResult.playerName}</strong> is{" "}
-            <strong>{detectiveResult.isMafia ? "MAFIA" : "NOT Mafia"}</strong>
+            <strong className={detectiveResult.isMafia ? "text-red-400" : "text-green-400"}>
+              {detectiveResult.isMafia ? r.MAFIA.name.toUpperCase() : `NOT ${r.MAFIA.name}`}
+            </strong>
           </p>
         </div>
       )}
