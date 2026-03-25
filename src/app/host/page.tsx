@@ -35,7 +35,7 @@ const SPEED_SETTINGS: Record<GameSpeed, { discussion: number; voting: number; la
 };
 
 export default function HostPage() {
-  const { theme } = useGameTheme();
+  const { theme, mode, setMode, classicGamesPlayed, incrementClassicGames } = useGameTheme();
   const r = theme.roles;
 
   const [roomCode, setRoomCode] = useState<string | null>(null);
@@ -45,12 +45,22 @@ export default function HostPage() {
   const [setupError, setSetupError] = useState<string | null>(null);
   const [gameSpeed, setGameSpeed] = useState<GameSpeed>("rapid");
   const [voiceChoice, setVoiceChoice] = useState<VoiceType>("male");
+  const [showDhurandharPromo, setShowDhurandharPromo] = useState(false);
+  const [showPostGamePromo, setShowPostGamePromo] = useState(false);
   const engineRef = useRef<GameEngine | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelsRef = useRef<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const playerChannelsRef = useRef<Map<string, any>>(new Map());
+
+  // Show first-time Dhurandhar promo
+  useEffect(() => {
+    if (mode === "classic" && !localStorage.getItem("citysleeps-dhurandhar-promo-seen")) {
+      const t = setTimeout(() => setShowDhurandharPromo(true), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [mode]);
 
   // Create room
   const createRoom = useCallback(() => {
@@ -230,6 +240,11 @@ export default function HostPage() {
         if (engineRef.current && roomCode) {
           saveGameResult(engineRef.current, roomCode).catch(console.error);
         }
+        // Track classic games and show Dhurandhar promo
+        if (mode === "classic") {
+          incrementClassicGames();
+          setTimeout(() => setShowPostGamePromo(true), 3000);
+        }
         break;
     }
   }, [gameState?.phase]);
@@ -308,6 +323,7 @@ export default function HostPage() {
     if (timerRef.current) clearInterval(timerRef.current);
     setTimer(null);
     setError(null);
+    setShowPostGamePromo(false);
     engineRef.current?.resetToLobby();
   };
 
@@ -394,6 +410,113 @@ export default function HostPage() {
         )}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-accent-darkred/5 blur-[150px] rounded-full" />
       </div>
+
+      {/* ─── First-time Dhurandhar promo popup ─── */}
+      <AnimatePresence>
+        {showDhurandharPromo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+            onClick={() => {
+              setShowDhurandharPromo(false);
+              localStorage.setItem("citysleeps-dhurandhar-promo-seen", "1");
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-bg-card border border-[#FF9933]/30 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl"
+            >
+              <div className="inline-block px-3 py-1 bg-[#FF9933]/15 border border-[#FF9933]/30 rounded-full mb-4">
+                <span className="text-[#FF9933] text-[10px] font-bold uppercase tracking-widest">Limited Time</span>
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-wider mb-2">
+                <span className="text-white">Try </span>
+                <span className="text-accent-red">Dhurandhar</span>
+                <span className="text-white"> Mode</span>
+              </h3>
+              <p className="text-muted-light text-xs leading-relaxed mb-5">
+                Play as characters from the blockbuster movie! ISI Agents, Ajmal Kasab, Hamza Ali Mazari and more. Same game, epic new twist.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    setMode("dhurandhar");
+                    setShowDhurandharPromo(false);
+                    localStorage.setItem("citysleeps-dhurandhar-promo-seen", "1");
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-[#FF9933] to-[#e6852e] hover:from-[#e6852e] hover:to-[#cc7528] text-black text-sm font-bold uppercase tracking-widest rounded-lg transition-all"
+                >
+                  Switch to Dhurandhar Mode
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDhurandharPromo(false);
+                    localStorage.setItem("citysleeps-dhurandhar-promo-seen", "1");
+                  }}
+                  className="w-full py-2.5 text-muted text-xs uppercase tracking-wider hover:text-white/60 transition-colors"
+                >
+                  Maybe Later
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Post-game Dhurandhar promo (after classic game) ─── */}
+      <AnimatePresence>
+        {showPostGamePromo && mode === "classic" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+            onClick={() => setShowPostGamePromo(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-bg-card border border-[#FF9933]/30 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl"
+            >
+              <p className="text-[#FF9933] text-3xl mb-3">🎬</p>
+              <h3 className="text-lg font-black uppercase tracking-wider mb-2">
+                {classicGamesPlayed >= 2
+                  ? "You\u2019re a pro now!"
+                  : "Great game!"}
+              </h3>
+              <p className="text-muted-light text-xs leading-relaxed mb-5">
+                {classicGamesPlayed >= 2
+                  ? "You\u2019ve played multiple rounds — now experience it with your favourite movie characters! Try Dhurandhar Mode inspired by the blockbuster film. Available for a limited time only."
+                  : "Want to play as characters from the hit movie Dhurandhar? ISI Agents vs India\u2019s finest. Same rules, cinematic twist. Available for a limited time!"}
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    setMode("dhurandhar");
+                    setShowPostGamePromo(false);
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-[#FF9933] to-[#e6852e] hover:from-[#e6852e] hover:to-[#cc7528] text-black text-sm font-bold uppercase tracking-widest rounded-lg transition-all"
+                >
+                  Try Dhurandhar Mode
+                </button>
+                <button
+                  onClick={() => setShowPostGamePromo(false)}
+                  className="w-full py-2.5 text-muted text-xs uppercase tracking-wider hover:text-white/60 transition-colors"
+                >
+                  Continue Classic
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mode toggle - top left */}
       {gameState.phase === "LOBBY" && (

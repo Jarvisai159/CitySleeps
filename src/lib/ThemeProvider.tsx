@@ -7,22 +7,29 @@ interface ThemeContextValue {
   mode: GameMode;
   theme: GameTheme;
   setMode: (mode: GameMode) => void;
+  classicGamesPlayed: number;
+  incrementClassicGames: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  mode: "dhurandhar",
-  theme: getTheme("dhurandhar"),
+  mode: "classic",
+  theme: getTheme("classic"),
   setMode: () => {},
+  classicGamesPlayed: 0,
+  incrementClassicGames: () => {},
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<GameMode>("dhurandhar");
+  const [mode, setModeState] = useState<GameMode>("classic");
+  const [classicGamesPlayed, setClassicGamesPlayed] = useState(0);
 
   useEffect(() => {
     const stored = localStorage.getItem("citysleeps-mode") as GameMode | null;
     if (stored === "classic" || stored === "dhurandhar") {
       setModeState(stored);
     }
+    const count = parseInt(localStorage.getItem("citysleeps-classic-games") ?? "0", 10);
+    setClassicGamesPlayed(count);
   }, []);
 
   const setMode = (m: GameMode) => {
@@ -30,8 +37,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("citysleeps-mode", m);
   };
 
+  const incrementClassicGames = () => {
+    const next = classicGamesPlayed + 1;
+    setClassicGamesPlayed(next);
+    localStorage.setItem("citysleeps-classic-games", String(next));
+  };
+
   return (
-    <ThemeContext.Provider value={{ mode, theme: getTheme(mode), setMode }}>
+    <ThemeContext.Provider value={{ mode, theme: getTheme(mode), setMode, classicGamesPlayed, incrementClassicGames }}>
       {children}
     </ThemeContext.Provider>
   );
