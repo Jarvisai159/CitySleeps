@@ -452,7 +452,7 @@ function PlayerPageInner() {
                       You were <span className="font-bold uppercase" style={{ color: r[myRole].color }}>{r[myRole].name}</span>
                     </p>
                   )}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 mb-8">
                     {gameState.players.map((p) => {
                       const role = gameState.allRoles?.[p.id];
                       return (
@@ -469,6 +469,9 @@ function PlayerPageInner() {
                       );
                     })}
                   </div>
+
+                  {/* Instagram share CTA */}
+                  <ShareCTA gameUrl={typeof window !== "undefined" ? window.location.origin : ""} theme={theme} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -539,6 +542,52 @@ function DeadBadge() {
     <div className="mt-4 inline-block px-4 py-1.5 bg-accent-red/10 border border-accent-red/20 rounded text-accent-red text-xs uppercase tracking-wider font-bold">
       Eliminated
     </div>
+  );
+}
+
+function ShareCTA({ gameUrl, theme }: { gameUrl: string; theme: ReturnType<typeof import("@/lib/gameTheme").getTheme> }) {
+  const [copied, setCopied] = useState(false);
+  const brandName = `${theme.brand.first}${theme.brand.second}`;
+  const shareText = `Just played ${brandName} with friends and it was insane! Try it out: ${gameUrl}`;
+
+  const handleInstagramShare = async () => {
+    // Try native share first (shows Instagram on mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: brandName,
+          text: shareText,
+          url: gameUrl,
+        });
+        return;
+      } catch { /* user cancelled or not supported */ }
+    }
+    // Fallback: copy link and open Instagram
+    await navigator.clipboard.writeText(shareText).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    window.open("https://instagram.com", "_blank");
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5 }}
+      className="bg-gradient-to-r from-purple-950/30 via-pink-950/30 to-orange-950/30 border border-white/10 rounded-xl p-5 text-center"
+    >
+      <p className="text-white text-sm font-bold mb-1">Had a blast playing?</p>
+      <p className="text-muted-light text-xs mb-4">Share it on your Instagram Story and let your friends know!</p>
+      <button
+        onClick={handleInstagramShare}
+        className="inline-flex items-center gap-2 py-2.5 px-6 bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 hover:from-purple-500 hover:via-pink-400 hover:to-orange-400 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all active:scale-[0.97]"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+        </svg>
+        {copied ? "Link Copied — Paste in Story!" : "Share on Instagram"}
+      </button>
+    </motion.div>
   );
 }
 
