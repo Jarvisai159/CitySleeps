@@ -110,7 +110,7 @@ const DHURANDHAR_THEME: GameTheme = {
   },
   roles: {
     MAFIA: {
-      name: "ISI Agent", symbol: "I", color: "#1B5E20", team: "isi", classicName: "Mafia",
+      name: "ISI Agent", symbol: "I", color: "#C41E3A", team: "isi", classicName: "Mafia",
       description: "Eliminate targets at night. Stay hidden during the day. You are an ISI operative in India.",
     },
     TERRORIST: {
@@ -118,7 +118,7 @@ const DHURANDHAR_THEME: GameTheme = {
       description: "ISI sleeper agent. Does not wake at night. If caught and voted out, takes one innocent down with you.",
     },
     HEALER: {
-      name: "Aalam Bhai", symbol: "A", color: "#E91E63", team: "india", classicName: "Healer",
+      name: "Aalam Bhai", symbol: "A", color: "#2D8B46", team: "india", classicName: "Healer",
       description: "Choose one person to protect each night. Your care saves lives in the shadows of India.",
     },
     DETECTIVE: {
@@ -126,7 +126,7 @@ const DHURANDHAR_THEME: GameTheme = {
       description: "Investigate one person each night to learn their allegiance. The safety of India rests on your shoulders.",
     },
     SPY: {
-      name: "Hamza Ali Mazari", symbol: "H", color: "#FF9933", team: "india", classicName: "Spy",
+      name: "Hamza Ali Mazari", symbol: "H", color: "#7C3AED", team: "india", classicName: "Spy",
       description: "India's ace agent — the Dhurandhar. Wakes with ISI — sees their identities and target. But appears as ISI to Ajay Sanyal. Use your intel wisely.",
     },
     CIVILIAN: {
