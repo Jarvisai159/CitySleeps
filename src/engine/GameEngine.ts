@@ -294,7 +294,6 @@ export class GameEngine {
         this.phase = "NIGHT_HEALER";
         const targets = alive.filter((p) => {
           if (!this.settings.healerSelfHeal && p.id === healer.id) return false;
-          if (this.lastHealerSave === p.id) return false;
           return true;
         });
         this.onPrivateMessage(healer.id, {

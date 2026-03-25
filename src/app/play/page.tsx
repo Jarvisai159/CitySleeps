@@ -85,7 +85,7 @@ function PlayerPageInner() {
     if (phase.startsWith("NIGHT")) {
       setActionSubmitted(false);
       setActionPrompt(null);
-      // Don't clear detective result - it should persist for discussion
+      setDetectiveResult(null);
       setSpyIntel(null);
     }
     if (phase === "DAY_VOTING") setHasVoted(false);
@@ -139,6 +139,8 @@ function PlayerPageInner() {
         } else if (msg.type === "detective-result" && msg.investigationResult) {
           setDetectiveResult(msg.investigationResult);
           setActionSubmitted(true);
+          // Auto-clear after 5 seconds so players can't show their screen
+          setTimeout(() => setDetectiveResult(null), 5000);
         } else if (msg.type === "spy-intel" && msg.spyIntel) {
           setSpyIntel(msg.spyIntel);
         } else if (msg.type === "action-confirmed") {
@@ -290,21 +292,23 @@ function PlayerPageInner() {
                   {!amAlive ? (
                     <DeadScreen />
                   ) : actionPrompt && !actionSubmitted ? (
-                    <NightActionUI prompt={actionPrompt} detectiveResult={detectiveResult} onSelect={handleNightAction} theme={theme} />
+                    <NightActionUI prompt={actionPrompt} onSelect={handleNightAction} theme={theme} />
                   ) : actionSubmitted ? (
                     <div>
-                      <div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-6" />
-                      <p className="text-muted-light text-sm">Action submitted. Waiting for others...</p>
-                      {detectiveResult && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 p-4 bg-blue-950/20 border border-blue-500/20 rounded-lg">
-                          <p className="text-blue-400 text-xs font-bold uppercase tracking-wider mb-1">Investigation Result</p>
-                          <p className="text-white text-sm">
-                            <strong>{detectiveResult.playerName}</strong> is{" "}
-                            <strong className={detectiveResult.isMafia ? "text-red-400" : "text-green-400"}>
-                              {detectiveResult.isMafia ? r.MAFIA.name.toUpperCase() : `NOT ${r.MAFIA.name}`}
-                            </strong>
+                      {detectiveResult ? (
+                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
+                          <p className="text-blue-400 text-xs font-bold uppercase tracking-wider mb-3">Investigation Result</p>
+                          <p className="text-white text-lg font-bold mb-1">{detectiveResult.playerName}</p>
+                          <p className={`text-2xl font-black uppercase tracking-wider ${detectiveResult.isMafia ? "text-red-400" : "text-green-400"}`}>
+                            {detectiveResult.isMafia ? r.MAFIA.name.toUpperCase() : `NOT ${r.MAFIA.name}`}
                           </p>
+                          <p className="text-muted text-[10px] mt-4 uppercase tracking-wider">This will disappear in a few seconds</p>
                         </motion.div>
+                      ) : (
+                        <>
+                          <div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-6" />
+                          <p className="text-muted-light text-sm">Action submitted. Waiting for others...</p>
+                        </>
                       )}
                     </div>
                   ) : myRole === "SPY" && gameState.phase === "NIGHT_MAFIA" ? (
@@ -362,16 +366,6 @@ function PlayerPageInner() {
                           <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Your Role</p>
                           <p className="text-sm font-bold uppercase tracking-wider" style={{ color: r[myRole].color }}>
                             {r[myRole].name}
-                          </p>
-                        </div>
-                      )}
-                      {detectiveResult && (
-                        <div className="mt-3 p-3 bg-blue-950/20 border border-blue-500/20 rounded-lg">
-                          <p className="text-blue-400 text-xs">
-                            Investigation: <strong>{detectiveResult.playerName}</strong> is{" "}
-                            <strong className={detectiveResult.isMafia ? "text-red-400" : "text-green-400"}>
-                              {detectiveResult.isMafia ? r.MAFIA.name.toUpperCase() : `NOT ${r.MAFIA.name}`}
-                            </strong>
                           </p>
                         </div>
                       )}
@@ -486,12 +480,10 @@ function PlayerPageInner() {
 
 function NightActionUI({
   prompt,
-  detectiveResult,
   onSelect,
   theme,
 }: {
   prompt: PrivateMessage;
-  detectiveResult: { playerName: string; isMafia: boolean } | null;
   onSelect: (targetId: string) => void;
   theme: ReturnType<typeof import("@/lib/gameTheme").getTheme>;
 }) {
@@ -515,17 +507,6 @@ function NightActionUI({
         {info.title}
       </h3>
       <p className="text-muted text-xs mb-6">Select a player</p>
-
-      {detectiveResult && (
-        <div className="mb-4 p-3 bg-blue-950/20 border border-blue-500/20 rounded-lg">
-          <p className="text-blue-400 text-xs">
-            Previous: <strong>{detectiveResult.playerName}</strong> is{" "}
-            <strong className={detectiveResult.isMafia ? "text-red-400" : "text-green-400"}>
-              {detectiveResult.isMafia ? r.MAFIA.name.toUpperCase() : `NOT ${r.MAFIA.name}`}
-            </strong>
-          </p>
-        </div>
-      )}
 
       <div className="space-y-2">
         {prompt.targets?.map((p) => (
