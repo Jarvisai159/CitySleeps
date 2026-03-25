@@ -24,17 +24,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [classicGamesPlayed, setClassicGamesPlayed] = useState(0);
 
   useEffect(() => {
-    const stored = localStorage.getItem("citysleeps-mode") as GameMode | null;
-    if (stored === "classic" || stored === "dhurandhar") {
-      setModeState(stored);
-    }
     const count = parseInt(localStorage.getItem("citysleeps-classic-games") ?? "0", 10);
     setClassicGamesPlayed(count);
   }, []);
 
   const setMode = (m: GameMode) => {
     setModeState(m);
-    localStorage.setItem("citysleeps-mode", m);
   };
 
   const incrementClassicGames = () => {
