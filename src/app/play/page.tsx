@@ -20,7 +20,7 @@ function PlayerPageInner() {
   const { theme } = useGameTheme();
   const r = theme.roles;
 
-  const [screen, setScreen] = useState<"join" | "lobby" | "game">("join");
+  const [screen, setScreen] = useState<"join" | "lobby" | "game" | "pending">("join");
   const [roomCode, setRoomCode] = useState(codeFromUrl);
   const [playerName, setPlayerName] = useState("");
   const [playerId, setPlayerId] = useState("");
@@ -36,6 +36,8 @@ function PlayerPageInner() {
   const [spyIntel, setSpyIntel] = useState<{ mafiaTargetName: string } | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
 
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelsRef = useRef<any[]>([]);
 
@@ -111,7 +113,13 @@ function PlayerPageInner() {
       .channel(getPublicChannel(code))
       .on("broadcast", { event: "game-state" }, ({ payload }) => {
         setGameState(payload as GameState);
-        if ((payload as GameState).phase !== "LOBBY") setScreen("game");
+        const gs = payload as GameState;
+        // If we're pending (mid-game join), only switch to lobby when game resets
+        if (gs.phase === "LOBBY") {
+          setScreen("lobby");
+        } else if (screenRef.current !== "pending" && screenRef.current !== "join") {
+          setScreen("game");
+        }
       })
       .subscribe();
 
@@ -145,6 +153,8 @@ function PlayerPageInner() {
           setSpyIntel(msg.spyIntel);
         } else if (msg.type === "action-confirmed") {
           setActionSubmitted(true);
+        } else if (msg.type === "pending") {
+          setScreen("pending");
         }
       })
       .subscribe();
@@ -238,6 +248,19 @@ function PlayerPageInner() {
             {gameState && (
               <p className="text-muted text-xs mt-4">{gameState.players.length} player{gameState.players.length !== 1 ? "s" : ""} connected</p>
             )}
+          </motion.div>
+        )}
+
+        {/* ─── PENDING (mid-game join) ────────────── */}
+        {screen === "pending" && (
+          <motion.div key="pending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center">
+            <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 3, repeat: Infinity }} className="w-3 h-3 rounded-full bg-amber-400 mx-auto mb-8" />
+            <h2 className="text-xl font-bold mb-2">Game in Progress</h2>
+            <p className="text-muted text-sm mb-4">
+              Room <span className="text-accent-red font-black tracking-wider">{roomCode}</span>
+            </p>
+            <p className="text-amber-400 text-xs uppercase tracking-widest mb-2">You&apos;ll join the next round!</p>
+            <p className="text-muted text-[11px]">Sit tight and watch. When the current game ends, you&apos;ll be added automatically.</p>
           </motion.div>
         )}
 

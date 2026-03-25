@@ -77,13 +77,15 @@ export interface PrivateMessage {
     | "action-prompt"
     | "detective-result"
     | "spy-intel"
-    | "action-confirmed";
+    | "action-confirmed"
+    | "pending";
   role?: Role;
   mafiaTeam?: string[];
   actionType?: "mafia-kill" | "healer-save" | "detective-investigate";
   targets?: PublicPlayer[];
   investigationResult?: { playerName: string; isMafia: boolean };
   spyIntel?: { mafiaTargetName: string };
+  message?: string;
 }
 
 export interface PlayerAction {

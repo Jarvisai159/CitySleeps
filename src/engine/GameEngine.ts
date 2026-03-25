@@ -64,6 +64,7 @@ export class GameEngine {
   voteResult: VoteResult | null = null;
   winner: "MAFIA" | "CITY" | null = null;
   lastHealerSave: string | null = null;
+  pendingPlayers: Map<string, { id: string; name: string }> = new Map();
 
   private onStateChange: (state: GameState) => void;
   private onPrivateMessage: (playerId: string, msg: PrivateMessage) => void;
@@ -79,7 +80,27 @@ export class GameEngine {
   }
 
   addPlayer(id: string, name: string): Player {
-    if (this.phase !== "LOBBY") throw new Error("Game already started");
+    // If game is in progress, queue them for next round
+    if (this.phase !== "LOBBY") {
+      if (this.players.has(id)) {
+        const p = this.players.get(id)!;
+        p.isConnected = true;
+        return p;
+      }
+      // Check name uniqueness across active and pending players
+      for (const p of this.players.values()) {
+        if (p.name.toLowerCase() === name.toLowerCase())
+          throw new Error("Name already taken");
+      }
+      for (const pp of this.pendingPlayers.values()) {
+        if (pp.name.toLowerCase() === name.toLowerCase())
+          throw new Error("Name already taken");
+      }
+      this.pendingPlayers.set(id, { id, name });
+      // Return a temporary player object so the host can acknowledge them
+      const player: Player = { id, name, role: null, isAlive: false, isConnected: true, deathRound: null };
+      return player;
+    }
     if (this.players.size >= 15) throw new Error("Room is full");
     if (this.players.has(id)) {
       const p = this.players.get(id)!;
@@ -527,6 +548,14 @@ export class GameEngine {
       player.isAlive = true;
       player.deathRound = null;
     }
+    // Add pending players who joined mid-game
+    for (const pp of this.pendingPlayers.values()) {
+      if (!this.players.has(pp.id) && this.players.size < 15) {
+        const player: Player = { id: pp.id, name: pp.name, role: null, isAlive: true, isConnected: true, deathRound: null };
+        this.players.set(pp.id, player);
+      }
+    }
+    this.pendingPlayers.clear();
     this.phase = "LOBBY";
     this.round = 0;
     this.nightActions = { mafiaVotes: {}, mafiaTarget: null, healerSave: null, detectiveTarget: null };

@@ -120,6 +120,17 @@ export default function HostPage() {
                     // Now safe to add the player (which broadcasts state)
                     try {
                       eng.addPlayer(action.playerId, action.playerName!);
+                      // If player was queued (mid-game join), send them a waiting message
+                      if (eng.pendingPlayers.has(action.playerId)) {
+                        pCh.send({
+                          type: "broadcast",
+                          event: "private-msg",
+                          payload: {
+                            type: "pending",
+                            message: "You'll join the next round! Sit tight and watch.",
+                          },
+                        });
+                      }
                     } catch (err: unknown) {
                       console.error("Add player error:", err);
                     }
@@ -535,12 +546,12 @@ export default function HostPage() {
 
       {/* ─── Persistent QR sidebar (visible during game, not lobby) ─── */}
       {gameState.phase !== "LOBBY" && (
-        <div className="fixed top-4 right-4 z-50 bg-bg-card/90 backdrop-blur border border-white/10 rounded-xl p-3 flex flex-col items-center gap-2 shadow-lg">
-          <div className="bg-white p-2 rounded-lg">
-            <QRCodeSVG value={joinUrl} size={80} level="M" bgColor="#ffffff" fgColor="#0d0d0d" />
+        <div className="fixed top-4 right-4 z-50 bg-bg-card/90 backdrop-blur border border-white/10 rounded-xl p-4 flex flex-col items-center gap-3 shadow-lg">
+          <div className="bg-white p-3 rounded-lg">
+            <QRCodeSVG value={joinUrl} size={140} level="M" bgColor="#ffffff" fgColor="#0d0d0d" />
           </div>
-          <p className="text-white text-xs font-black tracking-wider">{roomCode}</p>
-          <p className="text-muted text-[9px] uppercase tracking-widest">Scan to join</p>
+          <p className="text-white text-lg font-black tracking-wider">{roomCode}</p>
+          <p className="text-muted text-[10px] uppercase tracking-widest">Scan to join next round</p>
         </div>
       )}
 
