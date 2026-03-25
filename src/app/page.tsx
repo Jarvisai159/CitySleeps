@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useGameTheme } from "@/lib/ThemeProvider";
 import { ModeToggle } from "@/components/ModeToggle";
@@ -9,8 +10,16 @@ import { Role } from "@/engine/types";
 const ROLE_ORDER: Role[] = ["MAFIA", "TERRORIST", "HEALER", "DETECTIVE", "SPY", "CIVILIAN"];
 
 export default function Home() {
-  const { theme } = useGameTheme();
+  const { theme, mode, setMode } = useGameTheme();
   const r = theme.roles;
+  const [showDhurandharPromo, setShowDhurandharPromo] = useState(false);
+
+  useEffect(() => {
+    if (mode === "classic" && !localStorage.getItem("citysleeps-dhurandhar-promo-seen")) {
+      const t = setTimeout(() => setShowDhurandharPromo(true), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [mode]);
 
   return (
     <main className="min-h-dvh relative overflow-hidden">
@@ -227,6 +236,63 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* ─── Dhurandhar promo popup ─── */}
+      <AnimatePresence>
+        {showDhurandharPromo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+            onClick={() => {
+              setShowDhurandharPromo(false);
+              localStorage.setItem("citysleeps-dhurandhar-promo-seen", "1");
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-bg-card border border-[#FF9933]/30 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl"
+            >
+              <div className="inline-block px-3 py-1 bg-[#FF9933]/15 border border-[#FF9933]/30 rounded-full mb-4">
+                <span className="text-[#FF9933] text-[10px] font-bold uppercase tracking-widest">Limited Time</span>
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-wider mb-2">
+                <span className="text-white">Try </span>
+                <span className="text-accent-red">Dhurandhar</span>
+                <span className="text-white"> Mode</span>
+              </h3>
+              <p className="text-muted-light text-xs leading-relaxed mb-5">
+                Play as characters from the blockbuster movie! ISI Agents, Ajmal Kasab, Hamza Ali Mazari and more. Same game, epic new twist.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    setMode("dhurandhar");
+                    setShowDhurandharPromo(false);
+                    localStorage.setItem("citysleeps-dhurandhar-promo-seen", "1");
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-[#FF9933] to-[#e6852e] hover:from-[#e6852e] hover:to-[#cc7528] text-black text-sm font-bold uppercase tracking-widest rounded-lg transition-all"
+                >
+                  Switch to Dhurandhar Mode
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDhurandharPromo(false);
+                    localStorage.setItem("citysleeps-dhurandhar-promo-seen", "1");
+                  }}
+                  className="w-full py-2.5 text-muted text-xs uppercase tracking-wider hover:text-white/60 transition-colors"
+                >
+                  Maybe Later
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
