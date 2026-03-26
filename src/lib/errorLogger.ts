@@ -39,24 +39,39 @@ export async function logError(error: {
   }
 }
 
+/** Patterns that indicate browser-extension or third-party errors (not our code) */
+const IGNORE_PATTERNS = [
+  "__firefox__",         // Brave/Firefox internal browser scripts
+  "window.ethereum",     // Crypto wallet extensions (MetaMask, etc.)
+  "Script error.",       // Cross-origin extension errors (no details available)
+  "ResizeObserver",      // Benign browser ResizeObserver warnings
+  "extensions/",         // Chrome extension scripts
+  "moz-extension://",    // Firefox extension scripts
+  "chrome-extension://", // Chrome extension scripts
+  "webkit-masked-url",   // Safari internal
+];
+
+function isThirdPartyError(message: string, stack?: string): boolean {
+  const text = `${message} ${stack || ""}`;
+  return IGNORE_PATTERNS.some((p) => text.includes(p));
+}
+
 /** Install global error handlers. Call once at app init. */
 export function installGlobalErrorHandlers() {
   if (typeof window === "undefined") return;
 
   window.addEventListener("error", (event) => {
-    logError({
-      message: event.message || "Unknown error",
-      stack: event.error?.stack,
-      context: "window.onerror",
-    });
+    const msg = event.message || "Unknown error";
+    const stack = event.error?.stack;
+    if (isThirdPartyError(msg, stack)) return; // Skip extension noise
+    logError({ message: msg, stack, context: "window.onerror" });
   });
 
   window.addEventListener("unhandledrejection", (event) => {
     const reason = event.reason;
-    logError({
-      message: reason?.message || String(reason) || "Unhandled promise rejection",
-      stack: reason?.stack,
-      context: "unhandledrejection",
-    });
+    const msg = reason?.message || String(reason) || "Unhandled promise rejection";
+    const stack = reason?.stack;
+    if (isThirdPartyError(msg, stack)) return; // Skip extension noise
+    logError({ message: msg, stack, context: "unhandledrejection" });
   });
 }
