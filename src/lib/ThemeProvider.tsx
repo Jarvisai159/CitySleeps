@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { GameMode, GameTheme, getTheme } from "./gameTheme";
+import { safeGetItem, safeSetItem } from "./storage";
 
 interface ThemeContextValue {
   mode: GameMode;
@@ -24,7 +25,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [classicGamesPlayed, setClassicGamesPlayed] = useState(0);
 
   useEffect(() => {
-    const count = parseInt(localStorage.getItem("citysleeps-classic-games") ?? "0", 10);
+    const count = parseInt(safeGetItem("citysleeps-classic-games") ?? "0", 10);
     setClassicGamesPlayed(count);
   }, []);
 
@@ -35,7 +36,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const incrementClassicGames = () => {
     const next = classicGamesPlayed + 1;
     setClassicGamesPlayed(next);
-    localStorage.setItem("citysleeps-classic-games", String(next));
+    safeSetItem("citysleeps-classic-games", String(next));
   };
 
   return (

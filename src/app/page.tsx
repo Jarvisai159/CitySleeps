@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useGameTheme } from "@/lib/ThemeProvider";
 import { ModeToggle } from "@/components/ModeToggle";
 import { Role } from "@/engine/types";
+import { safeGetItem, safeSetItem } from "@/lib/storage";
 
 const ROLE_ORDER: Role[] = ["MAFIA", "TERRORIST", "HEALER", "DETECTIVE", "SPY", "CIVILIAN"];
 
@@ -15,7 +16,7 @@ export default function Home() {
   const [showDhurandharPromo, setShowDhurandharPromo] = useState(false);
 
   useEffect(() => {
-    if (mode === "classic" && !localStorage.getItem("citysleeps-dhurandhar-promo-seen")) {
+    if (mode === "classic" && !safeGetItem("citysleeps-dhurandhar-promo-seen")) {
       const t = setTimeout(() => setShowDhurandharPromo(true), 1500);
       return () => clearTimeout(t);
     }
@@ -248,7 +249,7 @@ export default function Home() {
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
             onClick={() => {
               setShowDhurandharPromo(false);
-              localStorage.setItem("citysleeps-dhurandhar-promo-seen", "1");
+              safeSetItem("citysleeps-dhurandhar-promo-seen", "1");
             }}
           >
             <motion.div
@@ -274,7 +275,7 @@ export default function Home() {
                   onClick={() => {
                     setMode("dhurandhar");
                     setShowDhurandharPromo(false);
-                    localStorage.setItem("citysleeps-dhurandhar-promo-seen", "1");
+                    safeSetItem("citysleeps-dhurandhar-promo-seen", "1");
                   }}
                   className="w-full py-3 bg-gradient-to-r from-[#FF9933] to-[#e6852e] hover:from-[#e6852e] hover:to-[#cc7528] text-black text-sm font-bold uppercase tracking-widest rounded-lg transition-all"
                 >
@@ -283,7 +284,7 @@ export default function Home() {
                 <button
                   onClick={() => {
                     setShowDhurandharPromo(false);
-                    localStorage.setItem("citysleeps-dhurandhar-promo-seen", "1");
+                    safeSetItem("citysleeps-dhurandhar-promo-seen", "1");
                   }}
                   className="w-full py-2.5 text-muted text-xs uppercase tracking-wider hover:text-white/60 transition-colors"
                 >

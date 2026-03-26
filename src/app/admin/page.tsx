@@ -62,11 +62,22 @@ interface TopPlayer {
   games_won: number;
 }
 
+interface ClientError {
+  id: string;
+  message: string;
+  stack: string | null;
+  page: string;
+  user_agent: string;
+  context: string | null;
+  created_at: string;
+}
+
 export default function AdminPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentGames, setRecentGames] = useState<RecentGame[]>([]);
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
+  const [clientErrors, setClientErrors] = useState<ClientError[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
@@ -153,6 +164,14 @@ export default function AdminPage() {
         .order("rating", { ascending: false })
         .limit(20);
       setTopPlayers(players ?? []);
+
+      // Fetch client errors
+      const { data: errors } = await sb
+        .from("client_errors")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setClientErrors(errors ?? []);
 
       setLoading(false);
     } catch (err) {
@@ -429,6 +448,41 @@ export default function AdminPage() {
           <SectionHeader title="Locations" subtitle="Where games are being played (by timezone)" />
           <div className="bg-bg-card border border-white/5 rounded-lg overflow-hidden mb-10">
             <LocationBreakdown sessions={sessions} />
+          </div>
+
+          {/* ─── Client Errors ──────────────────────────── */}
+          <SectionHeader title="Client Errors" subtitle={`Recent errors from user devices (${clientErrors.length})`} />
+          <div className="bg-bg-card border border-white/5 rounded-lg overflow-hidden mb-10">
+            {clientErrors.length === 0 ? (
+              <p className="text-green-500 text-xs p-6 text-center">No errors reported</p>
+            ) : (
+              <div className="divide-y divide-white/[0.03]">
+                {clientErrors.map((err) => (
+                  <div key={err.id} className="p-4">
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <p className="text-accent-red text-xs font-bold flex-1 break-all">{err.message}</p>
+                      <div className="text-right shrink-0">
+                        <p className="text-muted text-[10px]">{formatDate(err.created_at)}</p>
+                        <p className="text-muted text-[10px]">{formatTime(err.created_at)}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 text-[10px] text-muted mb-1">
+                      <span>Page: <strong className="text-muted-light">{err.page}</strong></span>
+                      {err.context && <span>Context: <strong className="text-muted-light">{err.context}</strong></span>}
+                    </div>
+                    <p className="text-[10px] text-muted break-all line-clamp-2">{err.user_agent}</p>
+                    {err.stack && (
+                      <details className="mt-2">
+                        <summary className="text-[10px] text-muted cursor-pointer hover:text-white/60">Stack trace</summary>
+                        <pre className="text-[9px] text-muted-light mt-1 bg-bg-primary rounded p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-40">
+                          {err.stack}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </motion.div>

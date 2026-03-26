@@ -21,6 +21,7 @@ import {
   trackSessionCompleted,
   resetSessionId,
 } from "@/lib/sessionTracker";
+import { safeGetItem, safeSetItem } from "@/lib/storage";
 import {
   speak,
   stopSpeech,
@@ -255,7 +256,7 @@ export default function HostPage() {
         // Track classic games and show Dhurandhar promo
         if (mode === "classic") {
           incrementClassicGames();
-          if (!localStorage.getItem("citysleeps-postgame-promo-dismissed")) {
+          if (!safeGetItem("citysleeps-postgame-promo-dismissed")) {
             setTimeout(() => setShowPostGamePromo(true), 3000);
           }
         }
@@ -442,7 +443,7 @@ export default function HostPage() {
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
             onClick={() => {
               setShowPostGamePromo(false);
-              localStorage.setItem("citysleeps-postgame-promo-dismissed", "1");
+              safeSetItem("citysleeps-postgame-promo-dismissed", "1");
             }}
           >
             <motion.div
@@ -476,7 +477,7 @@ export default function HostPage() {
                 <button
                   onClick={() => {
                     setShowPostGamePromo(false);
-                    localStorage.setItem("citysleeps-postgame-promo-dismissed", "1");
+                    safeSetItem("citysleeps-postgame-promo-dismissed", "1");
                   }}
                   className="w-full py-2.5 text-muted text-xs uppercase tracking-wider hover:text-white/60 transition-colors"
                 >
