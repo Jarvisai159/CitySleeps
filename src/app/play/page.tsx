@@ -298,6 +298,13 @@ function PlayerPageInner() {
                           {r[myRole].name}
                         </h3>
                         <p className="text-muted-light text-xs leading-relaxed">{r[myRole].description}</p>
+                        {r[myRole].premium && (
+                          <div className="mt-3 pt-3 border-t border-white/5 flex justify-center">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-[9px] font-bold uppercase tracking-wider text-amber-400">
+                              Advanced Role
+                            </span>
+                          </div>
+                        )}
                         {mafiaTeam.length > 0 && (
                           <p className="text-accent-red/70 text-xs mt-3 pt-3 border-t border-white/5">
                             Allies: {mafiaTeam.join(", ")}
@@ -455,7 +462,7 @@ function PlayerPageInner() {
                   ) : (
                     <>
                       <h3 className="text-xl font-black uppercase tracking-wider mb-2">No Elimination</h3>
-                      <p className="text-muted text-sm">{gameState.voteResult?.isTie ? "Tied vote." : "No majority."}</p>
+                      <p className="text-muted text-sm">Tied vote. No one is eliminated.</p>
                     </>
                   )}
                   {!amAlive && <DeadBadge />}
@@ -473,6 +480,7 @@ function PlayerPageInner() {
                   {myRole && (
                     <p className="text-muted-light text-sm mb-8">
                       You were <span className="font-bold uppercase" style={{ color: r[myRole].color }}>{r[myRole].name}</span>
+                      {r[myRole].premium && <span className="text-amber-400/60 text-[10px] ml-1.5 uppercase tracking-wider">Advanced</span>}
                     </p>
                   )}
                   <div className="space-y-1.5 mb-8">
@@ -484,9 +492,16 @@ function PlayerPageInner() {
                             {p.name}{p.id === playerId && <span className="text-muted text-xs ml-1">(you)</span>}
                           </span>
                           {role && (
-                            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: r[role].color }}>
-                              {r[role].name}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              {r[role].premium && (
+                                <span className="px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[7px] font-bold uppercase tracking-wider text-amber-400">
+                                  Adv
+                                </span>
+                              )}
+                              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: r[role].color }}>
+                                {r[role].name}
+                              </span>
+                            </div>
                           )}
                         </div>
                       );

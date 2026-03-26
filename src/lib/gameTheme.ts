@@ -9,6 +9,7 @@ export interface RoleDisplay {
   team: string;
   description: string;
   classicName?: string;
+  premium?: boolean;
 }
 
 export interface GameTheme {
@@ -60,6 +61,7 @@ const CLASSIC_THEME: GameTheme = {
     TERRORIST: {
       name: "Terrorist", symbol: "T", color: "#E85D04", team: "mafia",
       description: "Mafia-aligned sleeper. Does not wake at night. If voted out, takes one player down.",
+      premium: true,
     },
     HEALER: {
       name: "Healer", symbol: "H", color: "#2D8B46", team: "city",
@@ -72,6 +74,7 @@ const CLASSIC_THEME: GameTheme = {
     SPY: {
       name: "Spy", symbol: "S", color: "#7C3AED", team: "city",
       description: "Wakes with the Mafia — sees their identities and target. But appears as Mafia to the Detective.",
+      premium: true,
     },
     CIVILIAN: {
       name: "Civilian", symbol: "C", color: "#9CA3AF", team: "city",
@@ -116,6 +119,7 @@ const DHURANDHAR_THEME: GameTheme = {
     TERRORIST: {
       name: "Ajmal Kasab", symbol: "K", color: "#E85D04", team: "isi", classicName: "Terrorist",
       description: "ISI sleeper agent. Does not wake at night. If caught and voted out, takes one innocent down with you.",
+      premium: true,
     },
     HEALER: {
       name: "Aalam Bhai", symbol: "A", color: "#2D8B46", team: "india", classicName: "Healer",
@@ -128,6 +132,7 @@ const DHURANDHAR_THEME: GameTheme = {
     SPY: {
       name: "Hamza Ali Mazari", symbol: "H", color: "#7C3AED", team: "india", classicName: "Spy",
       description: "India's ace agent — the Dhurandhar. Wakes with ISI — sees their identities and target. But appears as ISI to Ajay Sanyal. Use your intel wisely.",
+      premium: true,
     },
     CIVILIAN: {
       name: "Awaam", symbol: "W", color: "#9CA3AF", team: "india", classicName: "Civilian",

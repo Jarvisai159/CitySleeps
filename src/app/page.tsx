@@ -144,6 +144,7 @@ export default function Home() {
                       team={role === "MAFIA" || role === "TERRORIST" ? theme.teamNames.evil : theme.teamNames.good}
                       desc={r[role].description}
                       classicName={r[role].classicName}
+                      premium={r[role].premium}
                     />
                   ))}
                 </div>
@@ -309,17 +310,22 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function RoleCard({ name, symbol, color, team, desc, classicName }: { name: string; symbol: string; color: string; team: string; desc: string; classicName?: string }) {
+function RoleCard({ name, symbol, color, team, desc, classicName, premium }: { name: string; symbol: string; color: string; team: string; desc: string; classicName?: string; premium?: boolean }) {
   return (
-    <div className="bg-bg-primary rounded-lg p-4 border" style={{ borderColor: `${color}20` }}>
+    <div className="bg-bg-primary rounded-lg p-4 border" style={{ borderColor: premium ? `${color}35` : `${color}20` }}>
       <div className="flex items-center gap-3 mb-2">
         <div className="w-7 h-7 rounded flex items-center justify-center text-[10px] font-black" style={{ backgroundColor: `${color}15`, color }}>
           {symbol}
         </div>
-        <div>
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{name}</span>
-          {classicName && <span className="text-muted text-[10px] ml-1">({classicName})</span>}
-          <span className="text-muted text-[10px] ml-2 uppercase tracking-wider">{team}</span>
+          {classicName && <span className="text-muted text-[10px]">({classicName})</span>}
+          {premium && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] font-bold uppercase tracking-wider text-amber-400">
+              Advanced
+            </span>
+          )}
+          <span className="text-muted text-[10px] uppercase tracking-wider">{team}</span>
         </div>
       </div>
       <p className="text-muted-light text-[11px] leading-relaxed">{desc}</p>

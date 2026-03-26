@@ -145,8 +145,11 @@ export class GameEngine {
     };
     if (this.phase === "DAY_VOTING") {
       const tally: Record<string, number> = {};
-      for (const targetId of Object.values(this.votes)) {
-        if (targetId !== "skip") tally[targetId] = (tally[targetId] || 0) + 1;
+      for (const [voterId, targetId] of Object.entries(this.votes)) {
+        if (targetId === "skip") continue;
+        const voter = this.players.get(voterId);
+        if (voter && voter.role === "SPY") continue; // Spy vote not counted
+        tally[targetId] = (tally[targetId] || 0) + 1;
       }
       state.voteTally = tally;
       state.votes = { ...this.votes };
@@ -403,13 +406,14 @@ export class GameEngine {
   }
 
   private resolveVoting(): void {
+    // Spy's vote is recorded (shown in UI) but NOT counted in the tally
     const tally: Record<string, number> = {};
-    for (const targetId of Object.values(this.votes)) {
-      if (targetId !== "skip") tally[targetId] = (tally[targetId] || 0) + 1;
+    for (const [voterId, targetId] of Object.entries(this.votes)) {
+      if (targetId === "skip") continue;
+      const voter = this.players.get(voterId);
+      if (voter && voter.role === "SPY") continue; // Spy vote doesn't count
+      tally[targetId] = (tally[targetId] || 0) + 1;
     }
-
-    const aliveCount = this.getAlivePlayers().length;
-    const majority = Math.floor(aliveCount / 2) + 1;
 
     let eliminated: string | null = null;
     let maxVotes = 0;
@@ -420,7 +424,8 @@ export class GameEngine {
       else if (count === maxVotes) { isTie = true; }
     }
 
-    if (maxVotes < majority || isTie) eliminated = null;
+    // Highest votes wins; ties mean no elimination
+    if (maxVotes === 0 || isTie) eliminated = null;
 
     let eliminatedRole: Role | null = null;
     let eliminatedName: string | null = null;

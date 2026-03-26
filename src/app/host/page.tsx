@@ -806,7 +806,7 @@ export default function HostPage() {
               <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                 <div className="w-12 h-px bg-white/20 mx-auto mb-8" />
                 <h2 className="text-2xl font-black uppercase tracking-wider mb-2">
-                  {gameState.voteResult?.isTie ? "Tied Vote" : "No Majority"}
+                  Tied Vote
                 </h2>
                 <p className="text-muted-light text-sm mb-2">No one was eliminated</p>
               </motion.div>
@@ -848,14 +848,47 @@ export default function HostPage() {
                       {p.name}
                     </span>
                     {role && (
-                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: r[role].color }}>
-                        {r[role].name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {r[role].premium && (
+                          <span className="px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[7px] font-bold uppercase tracking-wider text-amber-400">
+                            Adv
+                          </span>
+                        )}
+                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: r[role].color }}>
+                          {r[role].name}
+                        </span>
+                      </div>
                     )}
                   </div>
                 );
               })}
             </div>
+
+            {/* Premium roles summary */}
+            {(() => {
+              const roles = gameState.allRoles ?? {};
+              const hadPremium = Object.values(roles).some((role) => r[role]?.premium);
+              return (
+                <div className="mb-8 p-4 bg-bg-card/60 border border-amber-500/10 rounded-lg">
+                  {hadPremium ? (
+                    <>
+                      <p className="text-amber-400/80 text-[10px] font-bold uppercase tracking-widest mb-2">Advanced Roles in this Game</p>
+                      <div className="flex items-center justify-center gap-3">
+                        {Object.values(roles).filter((role, i, arr) => r[role]?.premium && arr.indexOf(role) === i).map((role) => (
+                          <span key={role} className="text-xs font-bold uppercase tracking-wider" style={{ color: r[role].color }}>
+                            {r[role].name}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-muted text-[10px] uppercase tracking-widest">
+                      Add more players to unlock advanced roles like {r.SPY.name} &amp; {r.TERRORIST.name}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button onClick={handlePlayAgain} className="py-3.5 px-14 bg-accent-red hover:bg-accent-crimson text-white text-sm font-bold uppercase tracking-widest rounded-lg transition-colors">
