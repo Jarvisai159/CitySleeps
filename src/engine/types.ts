@@ -10,6 +10,7 @@ export type GamePhase =
   | "DAY_DISCUSSION"
   | "DAY_VOTING"
   | "ELIMINATION"
+  | "TERRORIST_REVENGE"
   | "GAME_OVER";
 
 export interface Player {
@@ -45,6 +46,7 @@ export interface NightResult {
   killed: string | null;
   savedByHealer: boolean;
   killedPlayerName: string | null;
+  terroristVictimName: string | null;
 }
 
 export interface VoteResult {
@@ -56,6 +58,7 @@ export interface VoteResult {
   isTie: boolean;
   terroristVictim: string | null;
   terroristVictimName: string | null;
+  terroristPending?: boolean;
 }
 
 export interface GameState {
@@ -81,7 +84,7 @@ export interface PrivateMessage {
     | "pending";
   role?: Role;
   mafiaTeam?: string[];
-  actionType?: "mafia-kill" | "healer-save" | "detective-investigate";
+  actionType?: "mafia-kill" | "healer-save" | "detective-investigate" | "terrorist-revenge";
   targets?: PublicPlayer[];
   investigationResult?: { playerName: string; isMafia: boolean };
   spyIntel?: { mafiaTargetName: string };
@@ -89,7 +92,7 @@ export interface PrivateMessage {
 }
 
 export interface PlayerAction {
-  type: "join" | "night-action" | "vote" | "role-seen";
+  type: "join" | "night-action" | "vote" | "role-seen" | "terrorist-revenge";
   playerId: string;
   playerName?: string;
   targetId?: string;

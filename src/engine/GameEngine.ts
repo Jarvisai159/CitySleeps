@@ -64,6 +64,7 @@ export class GameEngine {
   voteResult: VoteResult | null = null;
   winner: "MAFIA" | "CITY" | null = null;
   lastHealerSave: string | null = null;
+  pendingTerroristVictimName: string | null = null;
   pendingPlayers: Map<string, { id: string; name: string }> = new Map();
 
   private onStateChange: (state: GameState) => void;
@@ -356,15 +357,19 @@ export class GameEngine {
     const target = this.nightActions.mafiaTarget;
     const saved = target !== null && target === this.nightActions.healerSave;
 
+    // Include terrorist victim from previous round's revenge (if any)
+    const terroristVictim = this.pendingTerroristVictimName;
+    this.pendingTerroristVictimName = null;
+
     if (target && !saved) {
       const victim = this.players.get(target);
       if (victim) {
         victim.isAlive = false;
         victim.deathRound = this.round;
-        this.nightResult = { killed: target, savedByHealer: false, killedPlayerName: victim.name };
+        this.nightResult = { killed: target, savedByHealer: false, killedPlayerName: victim.name, terroristVictimName: terroristVictim };
       }
     } else {
-      this.nightResult = { killed: null, savedByHealer: saved, killedPlayerName: null };
+      this.nightResult = { killed: null, savedByHealer: saved, killedPlayerName: null, terroristVictimName: terroristVictim };
     }
 
     this.phase = "DAWN";
@@ -440,38 +445,98 @@ export class GameEngine {
         eliminatedRole = p.role;
         eliminatedName = p.name;
 
-        // Terrorist revenge
+        // Terrorist revenge — don't auto-kill, set pending flag
         if (p.role === "TERRORIST") {
-          const aliveCitizens = this.getAlivePlayers().filter((v) => !isMafiaTeam(v.role!));
-          if (aliveCitizens.length > 0) {
-            const victim = aliveCitizens[Math.floor(Math.random() * aliveCitizens.length)];
-            victim.isAlive = false;
-            victim.deathRound = this.round;
-            terroristVictim = victim.id;
-            terroristVictimName = victim.name;
-          }
+          // Will be resolved in TERRORIST_REVENGE phase
         }
       }
     }
 
+    const isTerroristEliminated = eliminatedRole === "TERRORIST";
+
     this.voteResult = {
       votes: { ...this.votes }, tally, eliminated, eliminatedName,
-      eliminatedRole, isTie, terroristVictim, terroristVictimName,
+      eliminatedRole, isTie, terroristVictim: null, terroristVictimName: null,
+      terroristPending: isTerroristEliminated,
     };
 
     this.phase = "ELIMINATION";
     this.broadcastState();
 
-    const win = this.checkWinCondition();
-    if (win) {
-      this.winner = win;
-      this.phase = "GAME_OVER";
-      this.broadcastState();
+    // If terrorist was voted out, transition to revenge phase (host will call proceedAfterElimination)
+    // Otherwise check win condition
+    if (!isTerroristEliminated) {
+      const win = this.checkWinCondition();
+      if (win) {
+        this.winner = win;
+        this.phase = "GAME_OVER";
+        this.broadcastState();
+      }
     }
   }
 
   proceedAfterElimination(): void {
     if (this.winner) return;
+
+    // If terrorist was voted out, enter TERRORIST_REVENGE phase
+    if (this.voteResult?.terroristPending && this.voteResult.eliminated) {
+      this.phase = "TERRORIST_REVENGE";
+      this.broadcastState();
+      this.sendTerroristRevengePrompt();
+      return;
+    }
+
+    this.round++;
+    this.startNight();
+  }
+
+  private sendTerroristRevengePrompt(): void {
+    if (!this.voteResult?.eliminated) return;
+    const terrorist = this.players.get(this.voteResult.eliminated);
+    if (!terrorist) return;
+
+    // Terrorist can target any alive non-mafia player
+    const targets = this.getAlivePlayers().filter((p) => !isMafiaTeam(p.role!));
+
+    this.onPrivateMessage(terrorist.id, {
+      type: "action-prompt",
+      actionType: "terrorist-revenge",
+      targets: targets.map((t) => ({
+        id: t.id, name: t.name, isAlive: t.isAlive, isConnected: t.isConnected,
+      })),
+    });
+  }
+
+  submitTerroristRevenge(terroristId: string, targetId: string): void {
+    if (this.phase !== "TERRORIST_REVENGE") return;
+    if (this.voteResult?.eliminated !== terroristId) return;
+
+    const victim = this.players.get(targetId);
+    if (!victim || !victim.isAlive) return;
+
+    victim.isAlive = false;
+    victim.deathRound = this.round;
+
+    // Update voteResult with the victim info (will be revealed after night)
+    this.voteResult!.terroristVictim = targetId;
+    this.voteResult!.terroristVictimName = victim.name;
+    this.voteResult!.terroristPending = false;
+
+    this.onPrivateMessage(terroristId, { type: "action-confirmed" });
+
+    // Check win condition before proceeding to night
+    const win = this.checkWinCondition();
+    if (win) {
+      this.winner = win;
+      this.phase = "GAME_OVER";
+      this.broadcastState();
+      return;
+    }
+
+    // Store terrorist victim name so it can be announced at dawn
+    this.pendingTerroristVictimName = victim.name;
+
+    // Proceed to night — the terrorist victim reveal will happen at dawn
     this.round++;
     this.startNight();
   }
@@ -497,6 +562,15 @@ export class GameEngine {
         if (!this.votes[p.id]) this.votes[p.id] = "skip";
       }
       this.resolveVoting();
+    } else if (this.phase === "TERRORIST_REVENGE") {
+      // Auto-pick random target if terrorist hasn't chosen
+      if (this.voteResult?.eliminated) {
+        const targets = this.getAlivePlayers().filter((p) => !isMafiaTeam(p.role!));
+        if (targets.length > 0) {
+          const rand = targets[Math.floor(Math.random() * targets.length)];
+          this.submitTerroristRevenge(this.voteResult.eliminated, rand.id);
+        }
+      }
     }
   }
 
@@ -567,6 +641,7 @@ export class GameEngine {
     this.votes = {};
     this.nightResult = null;
     this.voteResult = null;
+    this.pendingTerroristVictimName = null;
     this.winner = null;
     this.lastHealerSave = null;
     this.broadcastState();

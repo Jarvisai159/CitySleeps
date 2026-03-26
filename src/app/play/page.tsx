@@ -182,6 +182,12 @@ function PlayerPageInner() {
     playVoteSound();
   };
 
+  const handleTerroristRevenge = (targetId: string) => {
+    sendAction({ type: "terrorist-revenge", playerId, targetId });
+    setActionSubmitted(true);
+    playVoteSound();
+  };
+
   const amAlive = gameState?.players.find((p) => p.id === playerId)?.isAlive ?? true;
 
   return (
@@ -374,6 +380,11 @@ function PlayerPageInner() {
                 <motion.div key="dawn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center">
                   <div className="w-3 h-3 rounded-full bg-amber-400 mx-auto mb-6" />
                   <h3 className="text-xl font-black uppercase tracking-wider mb-4">Dawn</h3>
+                  {gameState.nightResult?.terroristVictimName && (
+                    <p className="text-orange-400 font-bold mb-2">
+                      {r.TERRORIST.name}&apos;s revenge: {gameState.nightResult.terroristVictimName} was taken down.
+                    </p>
+                  )}
                   {gameState.nightResult?.killed ? (
                     <p className="text-accent-red font-bold">{gameState.nightResult.killedPlayerName} was killed.</p>
                   ) : gameState.nightResult?.savedByHealer ? (
@@ -458,6 +469,11 @@ function PlayerPageInner() {
                       <p className="text-sm font-bold uppercase tracking-wider" style={{ color: r[gameState.voteResult.eliminatedRole!]?.color }}>
                         {r[gameState.voteResult.eliminatedRole!]?.name}
                       </p>
+                      {gameState.voteResult.terroristPending && (
+                        <p className="text-orange-400 text-xs mt-3 uppercase tracking-wider">
+                          {r.TERRORIST.name} will have their revenge...
+                        </p>
+                      )}
                     </>
                   ) : (
                     <>
@@ -466,6 +482,48 @@ function PlayerPageInner() {
                     </>
                   )}
                   {!amAlive && <DeadBadge />}
+                </motion.div>
+              )}
+
+              {/* TERRORIST REVENGE */}
+              {gameState.phase === "TERRORIST_REVENGE" && (
+                <motion.div key="terrorist-revenge" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center w-full">
+                  {actionPrompt?.actionType === "terrorist-revenge" && !actionSubmitted ? (
+                    <div>
+                      <div
+                        className="w-10 h-10 rounded-lg mx-auto mb-4 flex items-center justify-center text-lg font-black"
+                        style={{ backgroundColor: `${r.TERRORIST.color}20`, color: r.TERRORIST.color }}
+                      >
+                        {r.TERRORIST.symbol}
+                      </div>
+                      <h3 className="text-xl font-black uppercase tracking-wider mb-2" style={{ color: r.TERRORIST.color }}>
+                        Your Final Act
+                      </h3>
+                      <p className="text-muted text-xs mb-6">Choose someone to take down with you</p>
+                      <div className="space-y-2">
+                        {actionPrompt.targets?.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => handleTerroristRevenge(p.id)}
+                            className="w-full py-4 px-5 bg-bg-card hover:bg-orange-500/10 border border-white/10 hover:border-orange-500/30 rounded-lg text-left text-sm font-medium transition-all active:scale-[0.98]"
+                          >
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : actionSubmitted ? (
+                    <div>
+                      <div className="w-3 h-3 rounded-full bg-orange-500 mx-auto mb-6" />
+                      <p className="text-orange-400 text-sm font-bold uppercase tracking-widest">Revenge taken</p>
+                      <p className="text-muted text-xs mt-2">The game continues...</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 2, repeat: Infinity }} className="w-3 h-3 rounded-full mx-auto mb-6" style={{ backgroundColor: r.TERRORIST.color }} />
+                      <p className="text-muted-light text-sm">{r.TERRORIST.name} is choosing their target...</p>
+                    </div>
+                  )}
                 </motion.div>
               )}
 

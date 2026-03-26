@@ -144,6 +144,8 @@ export default function HostPage() {
             eng.submitNightAction(action.playerId, action.targetId);
           } else if (action.type === "vote" && action.targetId) {
             eng.submitVote(action.playerId, action.targetId);
+          } else if (action.type === "terrorist-revenge" && action.targetId) {
+            eng.submitTerroristRevenge(action.playerId, action.targetId);
           } else if (action.type === "leave") {
             eng.removePlayer(action.playerId);
           }
@@ -209,13 +211,19 @@ export default function HostPage() {
       case "DAWN":
         playDawnChime();
         setTimeout(() => {
-          if (gameState.nightResult?.killed) {
-            speak(n.dawnKilled(gameState.nightResult.killedPlayerName!));
-          } else if (gameState.nightResult?.savedByHealer) {
-            speak(n.dawnSaved);
-          } else {
-            speak(n.dawnPeaceful);
+          let dawnMsg = "";
+          // Announce terrorist victim from previous round's revenge
+          if (gameState.nightResult?.terroristVictimName) {
+            dawnMsg += n.terroristRevenge(gameState.nightResult.terroristVictimName) + " ";
           }
+          if (gameState.nightResult?.killed) {
+            dawnMsg += n.dawnKilled(gameState.nightResult.killedPlayerName!);
+          } else if (gameState.nightResult?.savedByHealer) {
+            dawnMsg += n.dawnSaved;
+          } else {
+            dawnMsg += n.dawnPeaceful;
+          }
+          speak(dawnMsg);
         }, 800);
         break;
       case "DAY_DISCUSSION":
@@ -230,8 +238,8 @@ export default function HostPage() {
           if (gameState.voteResult?.eliminated) {
             const roleName = r[gameState.voteResult.eliminatedRole!]?.name ?? "Unknown";
             let msg = n.eliminated(gameState.voteResult.eliminatedName!, roleName);
-            if (gameState.voteResult.terroristVictimName) {
-              msg += " " + n.terroristRevenge(gameState.voteResult.terroristVictimName);
+            if (gameState.voteResult.terroristPending) {
+              msg += ` But the ${r.TERRORIST.name} will have their revenge. Check your phone, ${gameState.voteResult.eliminatedName}.`;
             }
             speak(msg);
           } else if (gameState.voteResult?.isTie) {
@@ -703,6 +711,15 @@ export default function HostPage() {
               <div className="w-3 h-3 rounded-full bg-amber-400 mx-auto mb-8" />
               <h2 className="text-3xl font-black uppercase tracking-wider mb-6">Dawn Breaks</h2>
 
+              {gameState.nightResult?.terroristVictimName && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className="bg-bg-card border border-orange-500/30 rounded-lg p-5 max-w-sm mx-auto mb-4">
+                  <p className="text-orange-400 text-xs uppercase tracking-wider font-bold mb-1">{r.TERRORIST.name}&apos;s Revenge</p>
+                  <p className="text-white text-lg font-black uppercase">{gameState.nightResult.terroristVictimName}</p>
+                  <p className="text-muted-light text-xs mt-1">was taken down by {r.TERRORIST.name}</p>
+                </motion.div>
+              )}
+
               {gameState.nightResult?.killed ? (
                 <div className="bg-bg-card border border-accent-red/30 rounded-lg p-6 max-w-sm mx-auto mb-8">
                   <p className="text-accent-red text-xl font-bold uppercase tracking-wide mb-1">
@@ -810,12 +827,11 @@ export default function HostPage() {
                     {r[gameState.voteResult.eliminatedRole!]?.name}
                   </p>
                 </div>
-                {gameState.voteResult.terroristVictimName && (
+                {gameState.voteResult.terroristPending && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 }}
                     className="bg-bg-card border border-orange-500/30 rounded-lg p-5 max-w-sm mx-auto mt-4">
                     <p className="text-orange-400 text-xs uppercase tracking-wider font-bold mb-1">{r.TERRORIST.name}&apos;s Final Act</p>
-                    <p className="text-white text-lg font-black uppercase">{gameState.voteResult.terroristVictimName}</p>
-                    <p className="text-muted-light text-xs mt-1">was taken down as well</p>
+                    <p className="text-muted-light text-xs mt-1">They will choose someone to take down...</p>
                   </motion.div>
                 )}
               </motion.div>
@@ -834,6 +850,28 @@ export default function HostPage() {
                 Continue to Night
               </button>
             )}
+          </motion.div>
+        )}
+
+        {/* ─── TERRORIST REVENGE ──────────────────── */}
+        {gameState.phase === "TERRORIST_REVENGE" && (
+          <motion.div key="terrorist-revenge" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10 text-center">
+            <div className="w-12 h-px bg-orange-500 mx-auto mb-8" />
+            <h2 className="text-2xl font-black uppercase tracking-wider mb-3" style={{ color: r.TERRORIST.color }}>
+              {r.TERRORIST.name}&apos;s Revenge
+            </h2>
+            <p className="text-muted-light text-sm mb-6">
+              {gameState.voteResult?.eliminatedName} is choosing who to take down...
+            </p>
+            <motion.div
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-3 h-3 rounded-full mx-auto mb-8" style={{ backgroundColor: r.TERRORIST.color }}
+            />
+            <p className="text-muted text-xs uppercase tracking-widest mb-6">Check your phone, {gameState.voteResult?.eliminatedName}</p>
+            <button onClick={handleForceResolve} className="py-2.5 px-8 bg-bg-elevated hover:bg-bg-hover text-muted-light text-xs uppercase tracking-widest rounded-lg transition-colors border border-white/5">
+              Force Advance
+            </button>
           </motion.div>
         )}
 
