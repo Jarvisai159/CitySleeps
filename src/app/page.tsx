@@ -57,7 +57,7 @@ export default function Home() {
               <Link href="/host">
                 <motion.button whileTap={{ scale: 0.98 }}
                   className="w-full py-4 px-8 bg-accent-red hover:bg-accent-crimson text-white text-sm font-bold uppercase tracking-widest rounded-lg transition-colors">
-                  Host a Game
+                  Start a Game
                 </motion.button>
               </Link>
               <Link href="/play">
@@ -69,8 +69,11 @@ export default function Home() {
             </div>
 
             <div className="w-16 h-px bg-white/10 mx-auto mt-10 mb-4" />
-            <p className="text-muted text-xs uppercase tracking-widest mb-6">
-              One device hosts &middot; Everyone plays
+            <p className="text-muted text-xs uppercase tracking-widest mb-2">
+              No moderator needed &middot; The game runs itself
+            </p>
+            <p className="text-muted/60 text-[10px] uppercase tracking-widest mb-6">
+              Start with just 4 players &middot; Others can join anytime
             </p>
             <div className="bg-bg-card/60 border border-white/5 rounded-lg p-4">
               <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Beta Version</p>

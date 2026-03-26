@@ -503,7 +503,7 @@ export default function HostPage() {
             <QRCodeSVG value={joinUrl} size={140} level="M" bgColor="#ffffff" fgColor="#0d0d0d" />
           </div>
           <p className="text-white text-lg font-black tracking-wider">{roomCode}</p>
-          <p className="text-muted text-[10px] uppercase tracking-widest">Scan to join next round</p>
+          <p className="text-muted text-[10px] uppercase tracking-widest">Join the next round</p>
         </div>
       )}
 
@@ -515,10 +515,12 @@ export default function HostPage() {
               <span className={theme.brand.accentSecond ? "text-white" : "text-accent-red"}>{theme.brand.first}</span>
               <span className={theme.brand.accentSecond ? "text-accent-red" : "text-white"}>{theme.brand.second}</span>
             </h2>
+            <p className="text-muted-light text-xs mb-1">No moderator needed — the game runs itself</p>
             <p className="text-muted text-sm uppercase tracking-[0.3em] mb-2">Room Code</p>
-            <h2 className="text-6xl font-black tracking-[0.15em] text-white mb-4">{roomCode}</h2>
+            <h2 className="text-6xl font-black tracking-[0.15em] text-white mb-2">{roomCode}</h2>
 
-            <div className="flex gap-2 justify-center mb-8">
+            <p className="text-muted text-xs uppercase tracking-widest mb-4">Invite Players</p>
+            <div className="flex gap-2 justify-center mb-4">
               <a
                 href={whatsappUrl}
                 target="_blank"
@@ -543,8 +545,11 @@ export default function HostPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-10 items-center justify-center mb-10">
-              <div className="bg-white p-4 rounded-xl">
-                <QRCodeSVG value={joinUrl} size={220} level="M" bgColor="#ffffff" fgColor="#0d0d0d" />
+              <div>
+                <div className="bg-white p-4 rounded-xl">
+                  <QRCodeSVG value={joinUrl} size={220} level="M" bgColor="#ffffff" fgColor="#0d0d0d" />
+                </div>
+                <p className="text-muted text-[10px] uppercase tracking-widest mt-2 text-center">Scan QR or share the link to join</p>
               </div>
 
               <div className="flex-1 min-w-[240px] text-left">
@@ -553,7 +558,7 @@ export default function HostPage() {
                 </p>
                 <div className="space-y-2">
                   {gameState.players.length === 0 && (
-                    <p className="text-muted text-base">Waiting for players...</p>
+                    <p className="text-muted text-base">Share the QR code to get started</p>
                   )}
                   {gameState.players.map((p, i) => (
                     <motion.div
@@ -628,17 +633,28 @@ export default function HostPage() {
               </div>
             </div>
 
+            <p className="text-muted/50 text-[10px] uppercase tracking-widest mb-4">
+              First time? Takes 1 minute to learn — the app guides everyone
+            </p>
+
             {error && <p className="text-accent-red text-sm mb-4">{error}</p>}
 
-            <button
-              onClick={handleStartGame}
-              disabled={gameState.players.length < 4}
-              className="py-3.5 px-14 bg-accent-red hover:bg-accent-crimson disabled:bg-bg-elevated disabled:text-muted text-white text-sm font-bold uppercase tracking-widest rounded-lg transition-colors"
-            >
-              {gameState.players.length < 4
-                ? `Need ${4 - gameState.players.length} more`
-                : "Start Game"}
-            </button>
+            <div className="text-center">
+              <button
+                onClick={handleStartGame}
+                disabled={gameState.players.length < 4}
+                className="py-3.5 px-14 bg-accent-red hover:bg-accent-crimson disabled:bg-bg-elevated disabled:text-muted text-white text-sm font-bold uppercase tracking-widest rounded-lg transition-colors"
+              >
+                {gameState.players.length < 4
+                  ? `${4 - gameState.players.length} more to start`
+                  : "Start Game"}
+              </button>
+              <p className="text-muted/60 text-[10px] uppercase tracking-widest mt-2">
+                {gameState.players.length < 4
+                  ? "Just 4 players to begin — more can join anytime"
+                  : "Others can still join during the game"}
+              </p>
+            </div>
           </motion.div>
         )}
 

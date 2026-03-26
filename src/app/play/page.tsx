@@ -244,7 +244,7 @@ function PlayerPageInner() {
             <p className="text-muted text-sm mb-4">
               Room <span className="text-accent-red font-black tracking-wider">{roomCode}</span>
             </p>
-            <p className="text-muted text-xs uppercase tracking-widest">Waiting for host to start...</p>
+            <p className="text-muted text-xs uppercase tracking-widest">Game starts when the host is ready</p>
             {gameState && (
               <p className="text-muted text-xs mt-4">{gameState.players.length} player{gameState.players.length !== 1 ? "s" : ""} connected</p>
             )}
