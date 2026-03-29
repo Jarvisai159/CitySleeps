@@ -38,8 +38,11 @@ function PlayerPageInner() {
 
   const screenRef = useRef(screen);
   screenRef.current = screen;
+  const myRoleRef = useRef<Role | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelsRef = useRef<any[]>([]);
+
+  const hasAutoRejoined = useRef(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("citysleeps-player-id");
@@ -51,6 +54,22 @@ function PlayerPageInner() {
       sessionStorage.setItem("citysleeps-player-id", id);
     }
   }, []);
+
+  // Auto-rejoin on refresh if session exists
+  useEffect(() => {
+    if (!playerId || hasAutoRejoined.current) return;
+    const savedRoom = sessionStorage.getItem("citysleeps-room-code");
+    const savedName = sessionStorage.getItem("citysleeps-player-name");
+    if (savedRoom && savedName && screen === "join") {
+      hasAutoRejoined.current = true;
+      setRoomCode(savedRoom);
+      setPlayerName(savedName);
+      // Auto-rejoin after a tick to let state settle
+      setTimeout(() => {
+        rejoinGame(savedRoom, savedName);
+      }, 100);
+    }
+  }, [playerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (codeFromUrl) setRoomCode(codeFromUrl);
@@ -75,6 +94,7 @@ function PlayerPageInner() {
     if (phase === "LOBBY") {
       setScreen("lobby");
       setMyRole(null);
+      myRoleRef.current = null;
       setMafiaTeam([]);
       setRoleRevealed(false);
       setActionPrompt(null);
@@ -93,30 +113,39 @@ function PlayerPageInner() {
     if (phase === "DAY_VOTING") setHasVoted(false);
   }, [gameState?.phase]);
 
-  const handleJoin = () => {
-    const code = roomCode.trim().toUpperCase();
-    const name = playerName.trim();
-    if (!code || code.length < 4) { setError("Enter a valid room code"); return; }
-    if (!name) { setError("Enter your name"); return; }
-    if (name.length > 15) { setError("Name too long (max 15 chars)"); return; }
-
-    setRoomCode(code);
-    setError(null);
-
+  const connectToGame = (code: string, name: string) => {
     let sb;
     try { sb = getSupabase(); } catch {
       setError("Supabase not configured. Contact the host.");
       return;
     }
 
+    // Clean up any existing channels first
+    try { channelsRef.current.forEach((ch) => sb.removeChannel(ch)); } catch { /* */ }
+
     const publicCh = sb
       .channel(getPublicChannel(code))
       .on("broadcast", { event: "game-state" }, ({ payload }) => {
-        setGameState(payload as GameState);
         const gs = payload as GameState;
-        // If we're pending (mid-game join), only switch to lobby when game resets
-        if (gs.phase === "LOBBY") {
+        setGameState(gs);
+
+        // Self-assign role from public state if private message was missed
+        if (gs.allRoles && gs.allRoles[playerId] && !myRoleRef.current) {
+          myRoleRef.current = gs.allRoles[playerId];
+          setMyRole(gs.allRoles[playerId]);
+          // Build mafia team info from allRoles
+          const mafiaTeamRoles = ["MAFIA", "TERRORIST"];
+          const mafiaNames = Object.entries(gs.allRoles)
+            .filter(([id, role]) => mafiaTeamRoles.includes(role) && id !== playerId)
+            .map(([id]) => {
+              const p = gs.players.find((pl) => pl.id === id);
+              return p ? `${p.name} (${gs.allRoles![id]})` : id;
+            });
+          setMafiaTeam(mafiaNames);
+          setScreen("game");
+        } else if (gs.phase === "LOBBY") {
           setScreen("lobby");
+          myRoleRef.current = null;
         } else if (screenRef.current !== "pending" && screenRef.current !== "join") {
           setScreen("game");
         }
@@ -138,6 +167,7 @@ function PlayerPageInner() {
       .on("broadcast", { event: "private-msg" }, ({ payload }) => {
         const msg = payload as PrivateMessage;
         if (msg.type === "role-assigned") {
+          myRoleRef.current = msg.role ?? null;
           setMyRole(msg.role ?? null);
           setMafiaTeam(msg.mafiaTeam ?? []);
           setScreen("game");
@@ -147,7 +177,6 @@ function PlayerPageInner() {
         } else if (msg.type === "detective-result" && msg.investigationResult) {
           setDetectiveResult(msg.investigationResult);
           setActionSubmitted(true);
-          // Auto-clear after 5 seconds so players can't show their screen
           setTimeout(() => setDetectiveResult(null), 5000);
         } else if (msg.type === "spy-intel" && msg.spyIntel) {
           setSpyIntel(msg.spyIntel);
@@ -160,7 +189,29 @@ function PlayerPageInner() {
       .subscribe();
 
     channelsRef.current = [publicCh, hostCh, privateCh];
+  };
 
+  const rejoinGame = (code: string, name: string) => {
+    setError(null);
+    connectToGame(code, name);
+    setScreen("lobby");
+  };
+
+  const handleJoin = () => {
+    const code = roomCode.trim().toUpperCase();
+    const name = playerName.trim();
+    if (!code || code.length < 4) { setError("Enter a valid room code"); return; }
+    if (!name) { setError("Enter your name"); return; }
+    if (name.length > 15) { setError("Name too long (max 15 chars)"); return; }
+
+    setRoomCode(code);
+    setError(null);
+
+    // Save session for auto-rejoin on refresh
+    sessionStorage.setItem("citysleeps-room-code", code);
+    sessionStorage.setItem("citysleeps-player-name", name);
+
+    connectToGame(code, name);
     setScreen("lobby");
   };
 

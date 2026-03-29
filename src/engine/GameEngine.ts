@@ -144,6 +144,14 @@ export class GameEngine {
       winner: this.winner,
       timer: null,
     };
+    // Include role assignments so players can self-assign if private message is lost
+    if (this.phase !== "LOBBY") {
+      const roles: Record<string, Role> = {};
+      for (const [id, player] of this.players) {
+        if (player.role) roles[id] = player.role;
+      }
+      state.allRoles = roles;
+    }
     if (this.phase === "DAY_VOTING") {
       const tally: Record<string, number> = {};
       for (const [voterId, targetId] of Object.entries(this.votes)) {
@@ -199,7 +207,9 @@ export class GameEngine {
       });
     }
 
-    this.broadcastState();
+    // Delay broadcast to give private messages time to deliver
+    // allRoles is included in state as a fallback for missed private messages
+    setTimeout(() => this.broadcastState(), 500);
   }
 
   private assignRoles(): void {
@@ -227,8 +237,9 @@ export class GameEngine {
     this.nightResult = null;
     this.voteResult = null;
     this.phase = "NIGHT_MAFIA";
-    this.broadcastState();
     this.sendMafiaPrompts();
+    // Delay broadcast so private prompts arrive before state change
+    setTimeout(() => this.broadcastState(), 300);
   }
 
   private sendMafiaPrompts(): void {
@@ -326,7 +337,7 @@ export class GameEngine {
           actionType: "healer-save",
           targets: targets.map((t) => ({ id: t.id, name: t.name, isAlive: t.isAlive, isConnected: t.isConnected })),
         });
-        this.broadcastState();
+        setTimeout(() => this.broadcastState(), 300);
         return;
       }
     }
@@ -342,7 +353,7 @@ export class GameEngine {
           actionType: "detective-investigate",
           targets: targets.map((t) => ({ id: t.id, name: t.name, isAlive: t.isAlive, isConnected: t.isConnected })),
         });
-        this.broadcastState();
+        setTimeout(() => this.broadcastState(), 300);
         return;
       }
     }
