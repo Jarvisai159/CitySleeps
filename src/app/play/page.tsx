@@ -25,6 +25,7 @@ function PlayerPageInner() {
   const [playerName, setPlayerName] = useState("");
   const [playerId, setPlayerId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState(false);
   const [gameState, setGameState] = useState<GameState | null>(null);
 
   const [myRole, setMyRole] = useState<Role | null>(null);
@@ -128,6 +129,14 @@ function PlayerPageInner() {
     try { channelsRef.current.forEach((ch) => sb.removeChannel(ch)); } catch { /* */ }
     if (joinRetryRef.current) { clearInterval(joinRetryRef.current); joinRetryRef.current = null; }
     joinConfirmedRef.current = false;
+    setConnectionError(false);
+
+    // Warn the player when the realtime backend is unreachable (e.g. a paused
+    // free Supabase project) instead of leaving them stuck on "You're in".
+    const onChannelStatus = (status: string) => {
+      if (status === "SUBSCRIBED") setConnectionError(false);
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setConnectionError(true);
+    };
 
     const publicCh = sb
       .channel(getPublicChannel(code))
@@ -161,7 +170,7 @@ function PlayerPageInner() {
           setScreen("game");
         }
       })
-      .subscribe();
+      .subscribe(onChannelStatus);
 
     const sendJoin = () => {
       try {
@@ -174,6 +183,7 @@ function PlayerPageInner() {
     };
 
     const hostCh = sb.channel(getHostChannel(code)).subscribe((status) => {
+      onChannelStatus(status);
       if (status === "SUBSCRIBED") sendJoin();
     });
 
@@ -217,7 +227,7 @@ function PlayerPageInner() {
           setScreen("pending");
         }
       })
-      .subscribe();
+      .subscribe(onChannelStatus);
 
     channelsRef.current = [publicCh, hostCh, privateCh];
   };
@@ -275,6 +285,13 @@ function PlayerPageInner() {
 
   return (
     <main className="min-h-dvh flex flex-col items-center justify-center px-6 py-8 safe-bottom">
+      {/* ─── Connection-down banner (e.g. paused Supabase backend) ─── */}
+      {connectionError && (
+        <div className="fixed top-0 left-0 right-0 z-[200] bg-accent-red text-white text-center text-xs sm:text-sm py-2.5 px-4 font-medium shadow-lg">
+          Can&apos;t reach the game server — it may be asleep. Ask the host to wake it, then tap Join again.
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
         {/* ─── JOIN ────────────────────────────────── */}
         {screen === "join" && (

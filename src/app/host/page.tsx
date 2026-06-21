@@ -50,6 +50,7 @@ export default function HostPage() {
   const [timer, setTimer] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState(false);
   const [gameSpeed, setGameSpeed] = useState<GameSpeed>("rapid");
   const [voiceChoice, setVoiceChoice] = useState<VoiceType>("male");
   const [showPostGamePromo, setShowPostGamePromo] = useState(false);
@@ -67,8 +68,15 @@ export default function HostPage() {
 
     const sb = getSupabase();
 
+    // Track realtime connectivity so we can warn when the backend is unreachable
+    // (e.g. a paused free Supabase project) instead of showing an empty lobby.
+    const onChannelStatus = (status: string) => {
+      if (status === "SUBSCRIBED") setConnectionError(false);
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setConnectionError(true);
+    };
+
     // Subscribe to public channel FIRST, then use it for broadcasting
-    const publicCh = sb.channel(getPublicChannel(code)).subscribe();
+    const publicCh = sb.channel(getPublicChannel(code)).subscribe(onChannelStatus);
 
     const engine = new GameEngine(
       (state) => {
@@ -152,7 +160,7 @@ export default function HostPage() {
           console.error("Action error:", err);
         }
       })
-      .subscribe();
+      .subscribe(onChannelStatus);
 
     channelsRef.current = [publicCh, hostCh];
     setGameState(engine.getGameState());
@@ -428,6 +436,13 @@ export default function HostPage() {
 
   return (
     <main className="min-h-dvh flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden">
+      {/* ─── Connection-down banner (e.g. paused Supabase backend) ─── */}
+      {connectionError && (
+        <div className="fixed top-0 left-0 right-0 z-[200] bg-accent-red text-white text-center text-xs sm:text-sm py-2.5 px-4 font-medium shadow-lg">
+          Can&apos;t reach the game server — the room backend may be asleep. Players won&apos;t be able to join until it&apos;s back online.
+        </div>
+      )}
+
       {/* Background atmospherics */}
       <div className="absolute inset-0 pointer-events-none">
         {gameState.phase.startsWith("NIGHT") && (
