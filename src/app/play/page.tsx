@@ -43,6 +43,10 @@ function PlayerPageInner() {
   const channelsRef = useRef<any[]>([]);
 
   const hasAutoRejoined = useRef(false);
+  // Tracks whether the host has acknowledged our join (we appear in game state
+  // or we're queued as pending). Drives the join-retry loop below.
+  const joinConfirmedRef = useRef(false);
+  const joinRetryRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("citysleeps-player-id");
@@ -120,14 +124,21 @@ function PlayerPageInner() {
       return;
     }
 
-    // Clean up any existing channels first
+    // Clean up any existing channels / pending retries first
     try { channelsRef.current.forEach((ch) => sb.removeChannel(ch)); } catch { /* */ }
+    if (joinRetryRef.current) { clearInterval(joinRetryRef.current); joinRetryRef.current = null; }
+    joinConfirmedRef.current = false;
 
     const publicCh = sb
       .channel(getPublicChannel(code))
       .on("broadcast", { event: "game-state" }, ({ payload }) => {
         const gs = payload as GameState;
         setGameState(gs);
+
+        // Host has acknowledged us — stop resending the join.
+        if (gs.players?.some((p) => p.id === playerId)) {
+          joinConfirmedRef.current = true;
+        }
 
         // Self-assign role from public state if private message was missed
         if (gs.allRoles && gs.allRoles[playerId] && !myRoleRef.current) {
@@ -152,15 +163,34 @@ function PlayerPageInner() {
       })
       .subscribe();
 
-    const hostCh = sb.channel(getHostChannel(code)).subscribe((status) => {
-      if (status === "SUBSCRIBED") {
+    const sendJoin = () => {
+      try {
         hostCh.send({
           type: "broadcast",
           event: "player-action",
           payload: { type: "join", playerId, playerName: name },
         });
-      }
+      } catch { /* channel not ready yet — retry loop will try again */ }
+    };
+
+    const hostCh = sb.channel(getHostChannel(code)).subscribe((status) => {
+      if (status === "SUBSCRIBED") sendJoin();
     });
+
+    // Keep resending the join until the host acknowledges us. A single dropped
+    // broadcast (or a host-side subscription hiccup) used to leave the player
+    // showing "You're in" while the host counted 0 players. Retries stop as
+    // soon as we appear in the broadcast state or get queued as pending.
+    let joinAttempts = 0;
+    joinRetryRef.current = setInterval(() => {
+      if (joinConfirmedRef.current || joinAttempts >= 8) {
+        if (joinRetryRef.current) clearInterval(joinRetryRef.current);
+        joinRetryRef.current = null;
+        return;
+      }
+      joinAttempts++;
+      sendJoin();
+    }, 1500);
 
     const privateCh = sb
       .channel(getPlayerChannel(code, playerId))
@@ -183,6 +213,7 @@ function PlayerPageInner() {
         } else if (msg.type === "action-confirmed") {
           setActionSubmitted(true);
         } else if (msg.type === "pending") {
+          joinConfirmedRef.current = true;
           setScreen("pending");
         }
       })
@@ -217,6 +248,7 @@ function PlayerPageInner() {
 
   useEffect(() => {
     return () => {
+      if (joinRetryRef.current) clearInterval(joinRetryRef.current);
       try { channelsRef.current.forEach((ch) => getSupabase().removeChannel(ch)); } catch { /* */ }
     };
   }, []);

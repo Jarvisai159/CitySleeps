@@ -109,36 +109,35 @@ export default function HostPage() {
 
         try {
           if (action.type === "join" && action.playerName) {
-            // Subscribe to player's private channel BEFORE adding them
+            // Register the player IMMEDIATELY. Never gate this on a secondary
+            // channel subscription — that race silently dropped players whose
+            // private channel didn't reach SUBSCRIBED, showing "0 players".
+            // addPlayer is idempotent, so duplicate join retries are harmless.
+            try {
+              eng.addPlayer(action.playerId, action.playerName);
+            } catch (err: unknown) {
+              console.error("Add player error:", err);
+            }
+            // Ensure the player's private channel exists for role/action messages.
             if (!playerChannelsRef.current.has(action.playerId)) {
               const pCh = sb
                 .channel(getPlayerChannel(code, action.playerId))
                 .subscribe((status) => {
-                  if (status === "SUBSCRIBED") {
-                    // Now safe to add the player (which broadcasts state)
-                    try {
-                      eng.addPlayer(action.playerId, action.playerName!);
-                      // If player was queued (mid-game join), send them a waiting message
-                      if (eng.pendingPlayers.has(action.playerId)) {
-                        pCh.send({
-                          type: "broadcast",
-                          event: "private-msg",
-                          payload: {
-                            type: "pending",
-                            message: "You'll join the next round! Sit tight and watch.",
-                          },
-                        });
-                      }
-                    } catch (err: unknown) {
-                      console.error("Add player error:", err);
-                    }
+                  // If they joined mid-game, tell them they're queued — but only
+                  // once the channel is actually ready to receive the message.
+                  if (status === "SUBSCRIBED" && eng.pendingPlayers.has(action.playerId)) {
+                    pCh.send({
+                      type: "broadcast",
+                      event: "private-msg",
+                      payload: {
+                        type: "pending",
+                        message: "You'll join the next round! Sit tight and watch.",
+                      },
+                    });
                   }
                 });
               playerChannelsRef.current.set(action.playerId, pCh);
               channelsRef.current.push(pCh);
-            } else {
-              // Channel already exists — player reconnecting
-              eng.addPlayer(action.playerId, action.playerName);
             }
           } else if (action.type === "night-action" && action.targetId) {
             eng.submitNightAction(action.playerId, action.targetId);
