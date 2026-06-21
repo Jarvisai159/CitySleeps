@@ -111,7 +111,11 @@ function PlayerPageInner() {
     if (phase === "ROLE_REVEAL") setRoleRevealed(false);
     if (phase.startsWith("NIGHT")) {
       setActionSubmitted(false);
-      setActionPrompt(null);
+      // Do NOT clear actionPrompt here. The night prompt (e.g. the Mafia's kill
+      // targets) is sent slightly BEFORE the phase-change broadcast, so clearing
+      // on phase entry wiped a prompt that had already arrived — leaving the
+      // player with no options. Display is gated by promptMatchesPhase below, so
+      // a stale prompt from a prior phase can't show regardless of ordering.
       setDetectiveResult(null);
       setSpyIntel(null);
     }
@@ -283,6 +287,20 @@ function PlayerPageInner() {
 
   const amAlive = gameState?.players.find((p) => p.id === playerId)?.isAlive ?? true;
 
+  // A night prompt is only shown when its actionType matches the current phase.
+  // This decouples display from message-ordering: the prompt can arrive before
+  // or after the phase broadcast and still render correctly, and a leftover
+  // prompt from a previous phase never leaks through.
+  const NIGHT_ACTION_FOR_PHASE: Record<string, string> = {
+    NIGHT_MAFIA: "mafia-kill",
+    NIGHT_HEALER: "healer-save",
+    NIGHT_DETECTIVE: "detective-investigate",
+  };
+  const promptMatchesPhase =
+    !!gameState &&
+    !!actionPrompt &&
+    NIGHT_ACTION_FOR_PHASE[gameState.phase] === actionPrompt.actionType;
+
   return (
     <main className="min-h-dvh flex flex-col items-center justify-center px-6 py-8 safe-bottom">
       {/* ─── Connection-down banner (e.g. paused Supabase backend) ─── */}
@@ -428,8 +446,8 @@ function PlayerPageInner() {
                 <motion.div key={`night-${gameState.phase}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center">
                   {!amAlive ? (
                     <DeadScreen />
-                  ) : actionPrompt && !actionSubmitted ? (
-                    <NightActionUI prompt={actionPrompt} onSelect={handleNightAction} theme={theme} />
+                  ) : promptMatchesPhase && !actionSubmitted ? (
+                    <NightActionUI prompt={actionPrompt!} onSelect={handleNightAction} theme={theme} />
                   ) : actionSubmitted ? (
                     <div>
                       {detectiveResult ? (
